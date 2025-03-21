@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-_prebuilts='https://downloads.sourceforge.net/project/dualbootpatcher/prebuilts'
+_prebuilts='http://127.0.0.1:9898'
 _ver_safe_iop=8.1.0_r2-2
 
 pkgname=android-system-core
@@ -26,25 +26,27 @@ license=(Apache)
 source=("git+https://android.googlesource.com/platform/system/core#tag=android-${pkgver}"
         0001-Make-this-NDK-buildable.patch
         0004-libcutils-Fix-missing-includes.patch)
-_source_template=("${_prebuilts}/safe-iop-${_ver_safe_iop}-@ARCH@.pkg.tar.xz"
-                  "${_prebuilts}/safe-iop-${_ver_safe_iop}-@ARCH@.pkg.tar.xz.sig")
+_source_template=("${_prebuilts}/safe-iop-${_ver_safe_iop}-@ARCH@.pkg.tar.gz")
 source_armv7=("${_source_template[@]/@ARCH@/armv7}")
 source_aarch64=("${_source_template[@]/@ARCH@/aarch64}")
 source_x86=("${_source_template[@]/@ARCH@/x86}")
 source_x86_64=("${_source_template[@]/@ARCH@/x86_64}")
-noextract=("safe-iop-${_ver_safe_iop}-${CARCH}.pkg.tar.xz")
-validpgpkeys=('2233C479609BDCEC43BE9232F6A3B19090EFF32C')
+noextract=("safe-iop-${_ver_safe_iop}-${CARCH}.pkg.tar.gz")
+#validpgpkeys=('2233C479609BDCEC43BE9232F6A3B19090EFF32C')
 
 prepare() {
     cd core
     patch -p1 -i ../0001-Make-this-NDK-buildable.patch
     patch -p1 -i ../0004-libcutils-Fix-missing-includes.patch
+    sed -i 's,#include <experimental/string_view>,#include <string_view>,g' liblog/event_tag_map.cpp
+    sed -i 's,std::experimental::string_view,std::string_view,g' liblog/event_tag_map.cpp
+
 
     mkdir -p common
     cd common
 
     mkdir -p safe-iop
-    bsdtar -xf "${srcdir}/safe-iop-${_ver_safe_iop}-${CARCH}.pkg.tar.xz" -C safe-iop
+    bsdtar -xf "${srcdir}/safe-iop-${_ver_safe_iop}-${CARCH}.pkg.tar.gz" -C safe-iop
 }
 
 build() {
@@ -98,11 +100,7 @@ package() {
 sha512sums=('SKIP'
             'b89e05cbc9bfb70d62f107e1d62d4ceb099739fd22e49ffbd0072ca9e68991fc4488fe682e61dda5d41799fdfa55fada30541e1c45f6e8c460ed11371973b42b'
             '9eba042dbd3d060719768b0c2707a8863258498111199e0b90d6ce1d1fe46f11f87d60b89ae809093ea9efdfe3791597f2d7923eea1389ed3827ce418e2b3e0f')
-sha512sums_armv7=('6332d33ce3dae5e5a00e998cfc686778f25802f1852015db2a2438a1a8cd1d4712548b13b36d6e3194405d64a0e02878c5ff12d16e69138f25e97342fe521323'
-                  'SKIP')
-sha512sums_aarch64=('4cf43213649fafc166f64540ac30c5c4679082d55946f110b45910fe2eeed6a304626cd674ee2aa0ac7accf87066d6243a6bd7b4b2282e3becdb85367457e84c'
-                    'SKIP')
-sha512sums_x86=('407def1bbf213798a92bb44cdee9e3100f1b77b927184b8ca0d1b14c1b967956b87f59c67d9ef84fedfe4cdafb73615e242de37b656fe3dcdebc34c6eceeedc5'
-                'SKIP')
-sha512sums_x86_64=('2be8d010913d81a902cca40721398647fe8fea5011213e4f0eebaa1f06abf40b2defe72e47a6ed8cc145b1a59f870cb967b9a084cf2fad65f90f7d3a6c369e3c'
-                   'SKIP')
+sha512sums_armv7=('SKIP')
+sha512sums_aarch64=('SKIP')
+sha512sums_x86=('SKIP')
+sha512sums_x86_64=('SKIP')

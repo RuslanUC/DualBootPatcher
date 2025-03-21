@@ -16,7 +16,7 @@
 _commit=dc332205326340ec1bf7d553452c7699904054b4
 
 pkgname=boringssl
-pkgver=r5501.dc3322053
+pkgver=r5501.dc33220532
 pkgrel=1
 pkgdesc="BoringSSL is a fork of OpenSSL that is designed to meet Google’s needs."
 arch=(armv7 aarch64 x86 x86_64)

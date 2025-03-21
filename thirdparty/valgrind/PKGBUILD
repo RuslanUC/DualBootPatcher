@@ -62,7 +62,8 @@ build() {
 
     # Make valgrind's build scripts happy
     local triplet
-    triplet=$("${srcdir}"/toolchain/bin/*-gcc -dumpmachine)
+    triplet=$(basename "${srcdir}"/toolchain/bin/*-gcc)
+    triplet=$(basename $triplet -gcc)
     export AR="${srcdir}/toolchain/bin/${triplet}-ar"
     export LD="${srcdir}/toolchain/bin/${triplet}-ld"
     export CC="${srcdir}/toolchain/bin/${triplet}-gcc"
