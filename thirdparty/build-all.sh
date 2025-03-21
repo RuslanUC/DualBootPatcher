@@ -1,7 +1,7 @@
 #!/bin/bash
 
-mkdir -p prebuilts
-cd prebuilts
+mkdir -p prebuilts-local
+cd prebuilts-local
 python -m http.server 9898 &
 PYTHON_SERVER_PID=$!
 cd ..
@@ -28,7 +28,7 @@ build_package() {
     echo "Built $package_name for $crossarch"
   done
 
-  cp *.pkg.tar.gz ../prebuilts/
+  cp *.pkg.tar.gz ../prebuilts-local/
   cd ..
 }
 
