@@ -13,6 +13,8 @@ if(${MBP_BUILD_TARGET} STREQUAL android-app)
         -Wno-missing-prototypes
     )
 
+    find_package(ZLIB REQUIRED)
+
     target_link_libraries(
         miscstuff-jni
         interface.global.CXXVersion
@@ -21,6 +23,9 @@ if(${MBP_BUILD_TARGET} STREQUAL android-app)
         mbbootimg-shared
         mblog-shared
         LibArchive::LibArchive
+        LZ4::LZ4
+        LibLZMA::LibLZMA
+        ZLIB::ZLIB
     )
 
     install(

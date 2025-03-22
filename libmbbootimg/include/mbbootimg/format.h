@@ -21,6 +21,7 @@
 
 #include <optional>
 #include <string_view>
+#include <stdint.h>
 
 #include "mbcommon/common.h"
 #include "mbcommon/flags.h"

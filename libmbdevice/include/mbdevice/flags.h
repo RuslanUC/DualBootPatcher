@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #include "mbcommon/flags.h"
 
 namespace mb::device

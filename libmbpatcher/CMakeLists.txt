@@ -71,6 +71,8 @@ foreach(variant ${variants})
         mblog-${variant}
         libminizip
         LibArchive::LibArchive
+        LibLZMA::LibLZMA
+        LZ4::LZ4
     )
 
     if(UNIX AND NOT ANDROID)

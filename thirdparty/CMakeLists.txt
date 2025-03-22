@@ -301,7 +301,7 @@ endif()
 # boringssl for Android
 ################################################################################
 
-set(BORINGSSL_VER "r5501.dc3322053-1")
+set(BORINGSSL_VER "r5501.dc33220532-1")
 
 if(MBP_TOP_LEVEL_BUILD)
     get_prebuilt(boringssl ${BORINGSSL_VER} armeabi-v7a)

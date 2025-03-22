@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export PATH=$PATH:$NDK_R18B
+
 mkdir -p prebuilts-local
 cd prebuilts-local
 python -m http.server 9898 &
@@ -16,13 +18,17 @@ stop_python() {
 trap stop_python EXIT
 
 build_package() {
-  package_name=$1
+  local package_name=$1
 
   cd "$package_name"
+  local pkgname=$(cat PKGBUILD | grep "pkgname=" | cut -d'=' -f2)
+  if [[ $pkgname == "("* ]]; then
+    pkgname=$(cat PKGBUILD | grep "pkgbase=" | cut -d'=' -f2)
+  fi
 
   for crossarch in armv7 aarch64 x86 x86_64;
   do
-    ls *-$crossarch.pkg.tar.gz >/dev/null 2>/dev/null && { echo "Package $package_name for $crossarch already built"; continue; }
+    ls $pkgname-*-$crossarch.pkg.tar.gz >/dev/null 2>/dev/null && { echo "Package $package_name for $crossarch already built"; continue; }
     CARCH=$crossarch ANDROID_NDK_HOME=$NDK_R18B ../makepkg -c -C || { echo "Failed to build $package_name"; exit 1; }
 
     echo "Built $package_name for $crossarch"

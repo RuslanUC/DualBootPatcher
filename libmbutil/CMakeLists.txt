@@ -83,6 +83,8 @@ foreach(variant ${variants})
         $<$<STREQUAL:${variant},shared>:interface.mbcommon.dynamic-link>
         mblog-${variant}
         LibArchive::LibArchive
+        LZ4::LZ4
+        LibLZMA::LibLZMA
         OpenSSL::Crypto
     )
 
@@ -114,6 +116,8 @@ if(variants AND MBP_ENABLE_TESTS)
         interface.global.CXXVersion
         mbutil-static
         LibArchive::LibArchive
+        LZ4::LZ4
+        LibLZMA::LibLZMA
         gmock
         gmock_main
     )

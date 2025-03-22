@@ -2,6 +2,8 @@ if(${MBP_BUILD_TARGET} STREQUAL android-system)
     add_executable(odinupdater odinupdater.cpp)
     add_executable(fuse-sparse fuse-sparse.cpp)
 
+    find_package(ZLIB REQUIRED)
+
     target_link_libraries(
         odinupdater
         PRIVATE
@@ -12,6 +14,7 @@ if(${MBP_BUILD_TARGET} STREQUAL android-system)
         mbcommon-static
         mblog-static
         LibArchive::LibArchive
+        ZLIB::ZLIB
     )
     target_link_libraries(
         fuse-sparse
