@@ -61,6 +61,8 @@
 #include "mbcommon/file/standard.h"
 
 // libmbsparse
+#include <system_error>
+
 #include "mbsparse/sparse.h"
 
 #ifdef __ANDROID__

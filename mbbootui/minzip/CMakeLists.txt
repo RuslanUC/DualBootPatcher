@@ -14,6 +14,10 @@ target_compile_definitions(
     -DPLATFORM_SDK_VERSION=${ANDROID_NATIVE_API_LEVEL}
 )
 
+if(${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    return()
+endif()
+
 target_compile_options(
     mbbootui-minzip
     PRIVATE

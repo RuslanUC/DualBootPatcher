@@ -41,6 +41,17 @@ if(${MBP_BUILD_TARGET} STREQUAL android-system
         RUNTIME DESTINATION "${BIN_INSTALL_DIR}/"
         COMPONENT Applications
     )
+elseif (${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    add_executable(
+            file-contexts-tool
+            file-contexts-tool/callbacks.c
+            file-contexts-tool/compile.c
+            file-contexts-tool/decompile.c
+            file-contexts-tool/label_support.c
+            file-contexts-tool/main.c
+            file-contexts-tool/pcre_shim.c
+            file-contexts-tool/regex.c
+    )
 endif()
 
 if(${MBP_BUILD_TARGET} STREQUAL android-system)

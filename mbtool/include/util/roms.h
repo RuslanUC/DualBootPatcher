@@ -72,6 +72,7 @@ private:
     static std::shared_ptr<Rom> create_rom_multi_slot(unsigned int num);
     static std::shared_ptr<Rom> create_rom_data_slot(const std::string &id);
     static std::shared_ptr<Rom> create_rom_extsd_slot(const std::string &id);
+    static std::shared_ptr<Rom> create_rom_fullextsd_slot(const std::string &id);
 
     void add_builtin();
     void add_data_roms();

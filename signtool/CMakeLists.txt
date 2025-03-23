@@ -20,4 +20,15 @@ if(${MBP_BUILD_TARGET} STREQUAL hosttools)
         RUNTIME DESTINATION "${BIN_INSTALL_DIR}/"
         COMPONENT Applications
     )
+elseif (${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    add_executable(signtool signtool.cpp)
+
+    target_include_directories(signtool PRIVATE ${CMAKE_SOURCE_DIR}/libmbsign/include)
+
+    set_target_properties(
+            signtool
+            PROPERTIES
+            BUILD_WITH_INSTALL_RPATH OFF
+            INSTALL_RPATH "\$ORIGIN/../lib"
+    )
 endif()

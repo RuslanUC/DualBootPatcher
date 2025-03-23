@@ -181,6 +181,21 @@ std::shared_ptr<Rom> Roms::create_rom_extsd_slot(const std::string &id)
     return rom;
 }
 
+std::shared_ptr<Rom> Roms::create_rom_fullextsd_slot(const std::string& id) {
+    std::shared_ptr<Rom> rom(new Rom());
+    rom->id.append("fullextsd-slot-").append(id);
+    rom->system_source = Rom::Source::ExternalSd;
+    rom->cache_source = Rom::Source::ExternalSd;
+    rom->data_source = Rom::Source::ExternalSd;
+    rom->system_path.append("/multiboot/").append(rom->id).append("/system.img");
+    rom->cache_path.append("/multiboot/").append(rom->id).append("/cache.img");
+    rom->data_path.append("/multiboot/").append(rom->id).append("/data.img");
+    rom->system_is_image = true;
+    rom->cache_is_image = true;
+    rom->data_is_image = true;
+    return rom;
+}
+
 void Roms::add_builtin()
 {
     roms.push_back(create_rom_primary());
@@ -265,7 +280,8 @@ void Roms::add_extsd_roms()
     struct dirent *ent;
     while ((ent = readdir(dp))) {
         if (strcmp(ent->d_name, "extsd-slot-") == 0
-                || !starts_with(ent->d_name, "extsd-slot-")) {
+                || !starts_with(ent->d_name, "extsd-slot-")
+                || !starts_with(ent->d_name, "fullextsd-slot-")) {
             continue;
         }
 
@@ -279,7 +295,7 @@ void Roms::add_extsd_roms()
         }
 
         if (stat(image.c_str(), &sb) == 0 && S_ISREG(sb.st_mode)) {
-            temp_roms.push_back(create_rom_extsd_slot(ent->d_name + 11));
+            temp_roms.push_back(create_rom_extsd_slot(ent->d_name + (starts_with(ent->d_name, "e") ? 11 : 15)));
         }
     }
 
@@ -389,17 +405,17 @@ std::shared_ptr<Rom> Roms::create_rom(const std::string &id)
         return create_rom_primary();
     } else if (id == "dual") {
         return create_rom_dual();
-    } else if (starts_with(id.c_str(), "multi-slot-")) {
+    } else if (starts_with(id, "multi-slot-")) {
         unsigned int num;
         if (sscanf(id.c_str(), "multi-slot-%u", &num) == 1) {
             return create_rom_multi_slot(num);
         }
-    } else if (starts_with(id.c_str(), "data-slot-")
-            && id != "data-slot-") {
+    } else if (starts_with(id, "data-slot-") && id != "data-slot-") {
         return create_rom_data_slot(id.substr(10));
-    } else if (starts_with(id.c_str(), "extsd-slot-")
-            && id != "extsd-slot-") {
+    } else if (starts_with(id, "extsd-slot-") && id != "extsd-slot-") {
         return create_rom_extsd_slot(id.substr(11));
+    } else if (starts_with(id, "fullextsd-slot-") && id != "fullextsd-slot-") {
+        return create_rom_fullextsd_slot(id.substr(15));
     }
 
     return std::shared_ptr<Rom>();

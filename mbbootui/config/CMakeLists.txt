@@ -6,9 +6,11 @@ target_include_directories(
     ..
 )
 
-target_link_libraries(
-    mbbootui-config
-    PUBLIC
-    interface.global.CXXVersion
-    mbdevice-static
-)
+if(NOT ${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    target_link_libraries(
+        mbbootui-config
+        PUBLIC
+        interface.global.CXXVersion
+        mbdevice-static
+    )
+endif()

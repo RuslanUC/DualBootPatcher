@@ -261,7 +261,7 @@ bool RomConfig::save_file(const std::string &path)
     Value v_cached_props(kObjectType);
 
     for (auto const &cp : cached_props) {
-        v_cached_props.AddMember(StringRef(cp.first), StringRef(cp.second),
+        v_cached_props.AddMember(StringRef(cp.first.c_str()), StringRef(cp.second.c_str()),
                                  alloc);
     }
 

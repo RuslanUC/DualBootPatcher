@@ -37,6 +37,10 @@ target_include_directories(
 #target_compile_definitions(mbbootui-minui PRIVATE -DTW_INCLUDE_JPEG)
 #target_link_libraries(mbbootui-minui PRIVATE ${MBP_LIBJPEG_LIBRARIES})
 
+if(${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    return()
+endif()
+
 target_compile_options(
     mbbootui-minui
     PRIVATE

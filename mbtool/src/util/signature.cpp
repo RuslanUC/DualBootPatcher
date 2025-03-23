@@ -20,7 +20,7 @@
 #include "util/signature.h"
 
 #include <cstdlib>
-#include <cstring>
+#include <string>
 
 #include <getopt.h>
 

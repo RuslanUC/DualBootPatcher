@@ -33,4 +33,23 @@ if(${MBP_BUILD_TARGET} STREQUAL android-system)
         RUNTIME DESTINATION "${BIN_INSTALL_DIR}/"
         COMPONENT Applications
     )
+elseif (${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    add_executable(odinupdater odinupdater.cpp)
+    add_executable(fuse-sparse fuse-sparse.cpp)
+
+    target_include_directories(
+            odinupdater
+            PRIVATE
+            ${CMAKE_SOURCE_DIR}/libmbcommon/include
+            ${CMAKE_SOURCE_DIR}/libmbsparse/include
+            ${CMAKE_SOURCE_DIR}/libmbdevice/include
+            ${CMAKE_SOURCE_DIR}/libmbutil/include
+    )
+
+    target_include_directories(
+            fuse-sparse
+            PRIVATE
+            ${CMAKE_SOURCE_DIR}/libmbcommon/include
+            ${CMAKE_SOURCE_DIR}/libmbsparse/include
+    )
 endif()

@@ -9,6 +9,37 @@ if(MBP_TOP_LEVEL_BUILD)
     )
 endif()
 
+if(${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    add_subdirectory(config)
+    add_subdirectory(minuitwrp)
+    add_subdirectory(minzip)
+    add_subdirectory(gui)
+
+    add_executable(
+            mbbootui
+            daemon_connection.cpp
+            data.cpp
+            find_file.cpp
+            infomanager.cpp
+            main.cpp
+            twrp-functions.cpp
+    )
+
+    target_include_directories(
+            mbbootui
+            PRIVATE
+            .
+            ${CMAKE_SOURCE_DIR}/external/flatbuffers/include
+            ${CMAKE_SOURCE_DIR}/libmbcommon/include
+            ${CMAKE_SOURCE_DIR}/libmblog/include
+            ${CMAKE_SOURCE_DIR}/libmbutil/include
+            ${CMAKE_SOURCE_DIR}/libmbdevice/include
+            ${CMAKE_SOURCE_DIR}/libmbpatcher/include
+    )
+
+    return()
+endif()
+
 if(NOT ${MBP_BUILD_TARGET} STREQUAL android-system)
     return()
 endif()

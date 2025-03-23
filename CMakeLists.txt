@@ -6,11 +6,11 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
 project(DualBootPatcher CXX C ASM)
 set(MBP_VERSION_MAJOR 9)
 set(MBP_VERSION_MINOR 3)
-set(MBP_VERSION_PATCH 0)
+set(MBP_VERSION_PATCH 1)
 set(MBP_VERSION "${MBP_VERSION_MAJOR}.${MBP_VERSION_MINOR}.${MBP_VERSION_PATCH}")
 
 # Build target and type
-set(MBP_BUILD_TARGET "desktop"
+set(MBP_BUILD_TARGET "android"
     CACHE STRING "Target platform (desktop or android)")
 set(MBP_BUILD_TYPE "debug"
     CACHE STRING "Target build type (release, debug, or ci)")
@@ -22,7 +22,7 @@ set(MBP_SYSTEM_BUILD_TYPE "release"
 # - android: Standard build for Android
 # - android-app: Build libraries to be used for the Android app
 #                (not to be built manually)
-# - android-system: Build executables to be included in the distrbution
+# - android-system: Build executables to be included in the distribution
 #                   (not to be built manually)
 # - hosttools: Builds tools needed on the host when cross-compiling
 #              (not to be built manually)
@@ -32,7 +32,8 @@ if(NOT ${MBP_BUILD_TARGET} STREQUAL desktop
         AND NOT ${MBP_BUILD_TARGET} STREQUAL android
         AND NOT ${MBP_BUILD_TARGET} STREQUAL android-app
         AND NOT ${MBP_BUILD_TARGET} STREQUAL android-system
-        AND NOT ${MBP_BUILD_TARGET} STREQUAL hosttools)
+        AND NOT ${MBP_BUILD_TARGET} STREQUAL hosttools
+        AND NOT ${MBP_BUILD_TARGET} STREQUAL clion-workaround)
     message(FATAL_ERROR "Invalid build target: ${MBP_BUILD_TARGET}")
 endif()
 if(NOT ${MBP_BUILD_TYPE} STREQUAL release
@@ -134,6 +135,10 @@ elseif(${MBP_BUILD_TARGET} STREQUAL hosttools)
     set(MBP_TOP_LEVEL_BUILD FALSE)
     set(MBP_INTERNAL_BUILD TRUE)
     set(MBP_TARGET_HAS_BUILDS TRUE)
+elseif(${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    set(MBP_TOP_LEVEL_BUILD TRUE)
+    set(MBP_INTERNAL_BUILD FALSE)
+    set(MBP_TARGET_HAS_BUILDS FALSE)
 endif()
 
 # Screw Ubuntu's multiarch. FIND_LIBRARY_USE_LIB64_PATHS is disabled when
@@ -150,7 +155,9 @@ include(cmake/SigningConfigReader.cmake)
 include(cmake/ConfigSigning.cmake)
 
 # Build target config
-include(${MBP_TARGET_CONFIG_FILE})
+if(NOT ${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    include(${MBP_TARGET_CONFIG_FILE})
+endif()
 
 # Implicit system include directories
 include(cmake/ImplicitIncludeDirs.cmake)

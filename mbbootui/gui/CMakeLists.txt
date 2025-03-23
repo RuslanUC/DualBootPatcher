@@ -38,6 +38,10 @@ target_include_directories(
     ${CMAKE_SOURCE_DIR}/external/flatbuffers/include
 )
 
+if(${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    return()
+endif()
+
 target_compile_options(
     mbbootui-gui
     PRIVATE
