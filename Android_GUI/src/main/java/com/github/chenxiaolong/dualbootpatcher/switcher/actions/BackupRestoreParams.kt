@@ -34,8 +34,6 @@ class BackupRestoreParams : Parcelable {
         RESTORE
     }
 
-    constructor()
-
     constructor(action: Action, romId: String, targets: Array<String>, backupName: String,
                 backupDirUri: Uri, force: Boolean) {
         this.action = action

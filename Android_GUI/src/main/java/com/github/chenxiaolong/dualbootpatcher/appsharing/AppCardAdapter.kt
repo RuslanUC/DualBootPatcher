@@ -35,11 +35,7 @@ class AppCardAdapter(
         appsList: List<AppInformation>,
         private val listener: AppCardActionListener?
 ) : RecyclerView.Adapter<AppCardViewHolder>() {
-    private val apps: MutableList<AppInformation>
-
-    init {
-        apps = ArrayList(appsList)
-    }
+    private val apps: MutableList<AppInformation> = ArrayList(appsList)
 
     private val onAppCardClickListener = object : AppCardClickListener {
         override fun onCardClick(view: View, position: Int) {

@@ -66,7 +66,7 @@ class PatchFileItemAdapter(private val context: Context, private val items: List
                         holder.vSubtitle2.setText(R.string.patcher_card_subtitle_succeeded)
                     } else {
                         holder.vSubtitle2.text = context.getString(
-                                R.string.patcher_card_subtitle_failed, item.errorCode)
+                                R.string.patcher_card_subtitle_failed, item.errorCode.toString())
                     }
                 }
                 holder.vProgress.visibility = View.GONE
@@ -79,6 +79,8 @@ class PatchFileItemAdapter(private val context: Context, private val items: List
                 holder.vProgressPercentage.visibility = View.VISIBLE
                 holder.vProgressFiles.visibility = View.VISIBLE
             }
+
+            null -> TODO()
         }
 
         // Normalize progress to 0-1000000 range to prevent integer overflow
@@ -104,7 +106,7 @@ class PatchFileItemAdapter(private val context: Context, private val items: List
 
         // Files progress
         holder.vProgressFiles.text = context.getString(R.string.overall_progress_files,
-                item.files, item.maxFiles)
+                item.files.toString(), item.maxFiles.toString())
     }
 
     override fun getItemCount(): Int {

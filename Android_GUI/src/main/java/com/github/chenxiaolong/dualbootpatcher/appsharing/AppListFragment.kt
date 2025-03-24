@@ -156,9 +156,9 @@ class AppListFragment : Fragment(), FirstUseDialogListener, AppCardActionListene
     }
 
     private fun filter(infos: List<AppInformation>?, query: String): List<AppInformation> {
-        val lowerQuery = query.toLowerCase()
+        val lowerQuery = query.lowercase()
 
-        return infos!!.filter { it.name.toLowerCase().contains(lowerQuery) }
+        return infos!!.filter { it.name.lowercase().contains(lowerQuery) }
     }
 
     override fun onQueryTextSubmit(query: String): Boolean {
@@ -266,8 +266,8 @@ class AppListFragment : Fragment(), FirstUseDialogListener, AppCardActionListene
         override fun loadInBackground(): LoaderResult? {
             val start = System.currentTimeMillis()
 
-            var info: RomInformation? = null
-            var roms: Array<RomInformation> = emptyArray()
+            var info: RomInformation?
+            var roms: Array<RomInformation>
 
             try {
                 MbtoolConnection(context).use {

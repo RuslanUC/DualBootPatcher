@@ -52,7 +52,7 @@ class DragSwipeItemTouchCallback(private val listener: OnItemMovedOrDismissedLis
             swipeFlags = ItemTouchHelper.START or ItemTouchHelper.END
         }
 
-        return ItemTouchHelper.Callback.makeMovementFlags(dragFlags, swipeFlags)
+        return makeMovementFlags(dragFlags, swipeFlags)
     }
 
     /**

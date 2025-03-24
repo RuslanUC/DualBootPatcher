@@ -22,7 +22,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import java.util.*
 
-internal class MountInfoAdapter constructor(
+internal class MountInfoAdapter(
         private val colors: IntArray
 ) : RecyclerView.Adapter<MountInfoViewHolder>() {
     private var mounts = emptyList<MountInfo>()

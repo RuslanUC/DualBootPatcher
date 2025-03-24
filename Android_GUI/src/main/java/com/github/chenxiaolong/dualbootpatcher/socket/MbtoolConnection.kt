@@ -235,13 +235,7 @@ constructor(context: Context) : Closeable {
             }
         }
 
-        @Suppress("DEPRECATION")
-        private val abi: String
-            get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                Build.SUPPORTED_ABIS[0]
-            } else {
-                Build.CPU_ABI
-            }
+        private val abi: String get() = Build.SUPPORTED_ABIS[0]
 
         @Throws(RootDeniedException::class, RootExecutionException::class)
         private fun runMbtoolDaemon(path: String): Int {

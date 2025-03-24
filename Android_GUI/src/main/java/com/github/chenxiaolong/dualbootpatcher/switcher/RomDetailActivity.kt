@@ -94,6 +94,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.concurrent.thread
+import androidx.core.net.toUri
 
 class RomDetailActivity : AppCompatActivity(), RomNameInputDialogListener,
         AddToHomeScreenOptionsDialogListener, CacheRomThumbnailTaskListener,
@@ -147,7 +148,7 @@ class RomDetailActivity : AppCompatActivity(), RomNameInputDialogListener,
         setContentView(R.layout.activity_rom_detail)
 
         val intent = intent
-        romInfo = intent.getParcelableExtra(EXTRA_ROM_INFO)
+        romInfo = intent.getParcelableExtra(EXTRA_ROM_INFO)!!
         bootedRomInfo = intent.getParcelableExtra(EXTRA_BOOTED_ROM_INFO)
         activeRomId = intent.getStringExtra(EXTRA_ACTIVE_ROM_ID)
 
@@ -628,8 +629,10 @@ class RomDetailActivity : AppCompatActivity(), RomNameInputDialogListener,
     override fun onSelectedBackupName(name: String) {
         val prefs = getSharedPreferences("settings", 0)
 
-        val backupDirUri = Uri.parse(prefs.getString(Constants.Preferences.BACKUP_DIRECTORY_URI,
-                Constants.Defaults.BACKUP_DIRECTORY_URI))
+        val backupDirUri = prefs.getString(
+            Constants.Preferences.BACKUP_DIRECTORY_URI,
+            Constants.Defaults.BACKUP_DIRECTORY_URI
+        )!!.toUri()
 
         val params = BackupRestoreParams(
                 Action.BACKUP, romInfo.id!!, backupTargets!!, name, backupDirUri, false)
@@ -856,7 +859,7 @@ class RomDetailActivity : AppCompatActivity(), RomNameInputDialogListener,
                                      userPackages: Int) {
         if (success) {
             setInfoItem(INFO_APPS_COUNTS, getString(R.string.rom_details_info_apps_counts_value,
-                    systemPackages, updatedPackages, userPackages))
+                    systemPackages.toString(), updatedPackages.toString(), userPackages.toString()))
         } else {
             setInfoItem(INFO_APPS_COUNTS, getString(R.string.unknown))
         }

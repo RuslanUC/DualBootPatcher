@@ -47,10 +47,10 @@ class BootUIActionTask(
     private var version: Version? = null
     private var success: Boolean = false
 
-    private class FileMapping internal constructor(
-            internal var source: String,
-            internal var target: String,
-            internal var mode: Int
+    private class FileMapping constructor(
+            var source: String,
+            var target: String,
+            var mode: Int
     )
 
     enum class BootUIAction {
@@ -60,7 +60,7 @@ class BootUIActionTask(
         UNINSTALL
     }
 
-    interface BootUIActionTaskListener : BaseServiceTask.BaseServiceTaskListener, MbtoolErrorListener {
+    interface BootUIActionTaskListener : BaseServiceTaskListener, MbtoolErrorListener {
         fun onBootUICheckedSupported(taskId: Int, supported: Boolean)
 
         fun onBootUIHaveVersion(taskId: Int, version: Version?)
@@ -184,12 +184,7 @@ class BootUIActionTask(
             return false
         }
 
-        @Suppress("DEPRECATION")
-        val abi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            Build.SUPPORTED_ABIS[0]
-        } else {
-            Build.CPU_ABI
-        }
+        val abi = Build.SUPPORTED_ABIS[0]
 
         val sourceDir = PatcherUtils.getTargetDirectory(context)
         val mountPoint = getCacheMountPoint(iface)
@@ -249,15 +244,15 @@ class BootUIActionTask(
 
                 synchronized(BootUIAction::class.java) {
                     when (action) {
-                        BootUIActionTask.BootUIAction.CHECK_SUPPORTED -> supported = checkSupported()
-                        BootUIActionTask.BootUIAction.GET_VERSION -> version = getCurrentVersion(iface)
-                        BootUIActionTask.BootUIAction.INSTALL -> {
+                        BootUIAction.CHECK_SUPPORTED -> supported = checkSupported()
+                        BootUIAction.GET_VERSION -> version = getCurrentVersion(iface)
+                        BootUIAction.INSTALL -> {
                             success = install(iface)
                             if (!success) {
                                 uninstall(iface)
                             }
                         }
-                        BootUIActionTask.BootUIAction.UNINSTALL -> success = uninstall(iface)
+                        BootUIAction.UNINSTALL -> success = uninstall(iface)
                     }
                 }
             }
@@ -282,7 +277,7 @@ class BootUIActionTask(
         }
     }
 
-    override fun onListenerAdded(listener: BaseServiceTask.BaseServiceTaskListener) {
+    override fun onListenerAdded(listener: BaseServiceTaskListener) {
         super.onListenerAdded(listener)
 
         synchronized(stateLock) {
@@ -294,16 +289,16 @@ class BootUIActionTask(
 
     private fun sendResult() {
         when (action) {
-            BootUIActionTask.BootUIAction.CHECK_SUPPORTED -> sendOnCheckedSupported()
-            BootUIActionTask.BootUIAction.GET_VERSION -> sendOnHaveVersion()
-            BootUIActionTask.BootUIAction.INSTALL -> sendOnInstalled()
-            BootUIActionTask.BootUIAction.UNINSTALL -> sendOnUninstalled()
+            BootUIAction.CHECK_SUPPORTED -> sendOnCheckedSupported()
+            BootUIAction.GET_VERSION -> sendOnHaveVersion()
+            BootUIAction.INSTALL -> sendOnInstalled()
+            BootUIAction.UNINSTALL -> sendOnUninstalled()
         }
     }
 
     private fun sendOnCheckedSupported() {
-        forEachListener(object : BaseServiceTask.CallbackRunnable {
-            override fun call(listener: BaseServiceTask.BaseServiceTaskListener) {
+        forEachListener(object : CallbackRunnable {
+            override fun call(listener: BaseServiceTaskListener) {
                 (listener as BootUIActionTaskListener).onBootUICheckedSupported(
                         taskId, supported)
             }
@@ -311,8 +306,8 @@ class BootUIActionTask(
     }
 
     private fun sendOnHaveVersion() {
-        forEachListener(object : BaseServiceTask.CallbackRunnable {
-            override fun call(listener: BaseServiceTask.BaseServiceTaskListener) {
+        forEachListener(object : CallbackRunnable {
+            override fun call(listener: BaseServiceTaskListener) {
                 (listener as BootUIActionTaskListener).onBootUIHaveVersion(
                         taskId, version)
             }
@@ -320,8 +315,8 @@ class BootUIActionTask(
     }
 
     private fun sendOnInstalled() {
-        forEachListener(object : BaseServiceTask.CallbackRunnable {
-            override fun call(listener: BaseServiceTask.BaseServiceTaskListener) {
+        forEachListener(object : CallbackRunnable {
+            override fun call(listener: BaseServiceTaskListener) {
                 (listener as BootUIActionTaskListener).onBootUIInstalled(
                         taskId, success)
             }
@@ -329,8 +324,8 @@ class BootUIActionTask(
     }
 
     private fun sendOnUninstalled() {
-        forEachListener(object : BaseServiceTask.CallbackRunnable {
-            override fun call(listener: BaseServiceTask.BaseServiceTaskListener) {
+        forEachListener(object : CallbackRunnable {
+            override fun call(listener: BaseServiceTaskListener) {
                 (listener as BootUIActionTaskListener).onBootUIUninstalled(
                         taskId, success)
             }
@@ -338,8 +333,8 @@ class BootUIActionTask(
     }
 
     private fun sendOnMbtoolError(reason: Reason) {
-        forEachListener(object : BaseServiceTask.CallbackRunnable {
-            override fun call(listener: BaseServiceTask.BaseServiceTaskListener) {
+        forEachListener(object : CallbackRunnable {
+            override fun call(listener: BaseServiceTaskListener) {
                 (listener as BootUIActionTaskListener).onMbtoolConnectionFailed(
                         taskId, reason)
             }

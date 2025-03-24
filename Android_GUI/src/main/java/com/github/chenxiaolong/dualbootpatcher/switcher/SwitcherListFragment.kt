@@ -165,19 +165,15 @@ class SwitcherListFragment : Fragment(), RomCardActionListener, SetKernelNeededD
         activity!!.startService(intent)
 
         // Permissions
-        if (PermissionUtils.supportsRuntimePermissions()) {
-            if (isInitialStart) {
-                requestPermissions()
-            } else if (havePermissionsResult) {
-                if (PermissionUtils.hasPermissions(
-                        activity!!, PermissionUtils.STORAGE_PERMISSIONS)) {
-                    onPermissionsGranted()
-                } else {
-                    onPermissionsDenied()
-                }
+        if (isInitialStart) {
+            requestPermissions()
+        } else if (havePermissionsResult) {
+            if (PermissionUtils.hasPermissions(
+                    activity!!, PermissionUtils.STORAGE_PERMISSIONS)) {
+                onPermissionsGranted()
+            } else {
+                onPermissionsDenied()
             }
-        } else {
-            startWhenServiceConnected()
         }
     }
 

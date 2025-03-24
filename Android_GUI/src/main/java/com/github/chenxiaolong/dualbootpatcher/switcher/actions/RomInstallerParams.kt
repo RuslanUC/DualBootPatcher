@@ -28,8 +28,6 @@ class RomInstallerParams : Parcelable {
     var skipMounts = false
     var allowOverwrite = false
 
-    constructor()
-
     constructor(uri: Uri, displayName: String, romId: String) {
         this.uri = uri
         this.displayName = displayName

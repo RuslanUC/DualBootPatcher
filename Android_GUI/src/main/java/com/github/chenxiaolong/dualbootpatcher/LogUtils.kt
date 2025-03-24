@@ -26,7 +26,7 @@ import java.io.IOException
 object LogUtils {
     private val TAG = LogUtils::class.java.simpleName
 
-    fun getPath(logFile: String): String {
+    private fun getPath(logFile: String): String {
         val fileName = File(logFile).name
 
         return Environment.getExternalStorageDirectory().toString() +
@@ -37,7 +37,7 @@ object LogUtils {
 
     fun dump(logFile: String) {
         val path = File(getPath(logFile))
-        path.parentFile.mkdirs()
+        path.parentFile?.mkdirs()
         try {
             val command = arrayOf(
                     "logcat",

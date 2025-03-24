@@ -135,7 +135,7 @@ class AutomatedSwitcherActivity : AppCompatActivity(), ConfirmAutomatedSwitchRom
             val shouldShow = prefs.getBoolean(PREF_SHOW_CONFIRM_DIALOG, true)
             if (shouldShow) {
                 val d = ConfirmAutomatedSwitchRomDialog.newInstance(
-                        intent.getStringExtra(EXTRA_ROM_ID))
+                        intent.getStringExtra(EXTRA_ROM_ID)!!)
                 d.show(supportFragmentManager, CONFIRM_DIALOG_AUTOMATED)
             } else {
                 switchRom()
@@ -235,7 +235,7 @@ class AutomatedSwitcherActivity : AppCompatActivity(), ConfirmAutomatedSwitchRom
         builder.message(R.string.please_wait)
         builder.build().show(supportFragmentManager, "automated_switch_rom_waiting")
 
-        taskIdSwitchRom = service!!.switchRom(intent.getStringExtra(EXTRA_ROM_ID), false)
+        taskIdSwitchRom = service!!.switchRom(intent.getStringExtra(EXTRA_ROM_ID)!!, false)
         service!!.addCallback(taskIdSwitchRom, callback)
         service!!.enqueueTaskId(taskIdSwitchRom)
     }

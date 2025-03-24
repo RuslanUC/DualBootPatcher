@@ -24,6 +24,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Point
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
+import android.util.TypedValue
 import android.view.MenuItem
 import android.view.View
 import android.widget.ImageView
@@ -46,6 +48,8 @@ import com.google.android.material.navigation.NavigationView
 import com.google.android.material.navigation.NavigationView.OnNavigationItemSelectedListener
 import com.squareup.picasso.Picasso
 import kotlin.concurrent.thread
+import androidx.core.view.size
+import androidx.core.view.get
 
 class MainActivity : AppCompatActivity(), OnNavigationItemSelectedListener {
     private lateinit var prefs: SharedPreferences
@@ -66,7 +70,7 @@ class MainActivity : AppCompatActivity(), OnNavigationItemSelectedListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.drawer_layout)
 
-        handler = Handler()
+        handler = Handler(Looper.myLooper()!!)
 
         prefs = getSharedPreferences("settings", 0)
 
@@ -83,7 +87,7 @@ class MainActivity : AppCompatActivity(), OnNavigationItemSelectedListener {
                 super.onDrawerClosed(view)
 
                 if (pending != null) {
-                    handler.post(pending)
+                    handler.post(pending!!)
                     pending = null
                 }
             }
@@ -127,8 +131,14 @@ class MainActivity : AppCompatActivity(), OnNavigationItemSelectedListener {
         display.getSize(size)
 
         val params = drawerView.layoutParams
-        val toolbarHeight = resources.getDimensionPixelSize(
-                R.dimen.abc_action_bar_default_height_material)
+
+        val tv = TypedValue()
+        val toolbarHeight: Int
+        if (theme.resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
+            toolbarHeight = TypedValue.complexToDimensionPixelSize(tv.data, resources.displayMetrics)
+        } else {
+            toolbarHeight = 0
+        }
         params.width = Math.min(size.x - toolbarHeight, 6 * toolbarHeight)
         drawerView.layoutParams = params
 
@@ -249,8 +259,8 @@ class MainActivity : AppCompatActivity(), OnNavigationItemSelectedListener {
             hideFragments(userClicked)
 
             val menu = drawerView.menu
-            (0 until menu.size())
-                    .map { menu.getItem(it) }
+            (0 until menu.size)
+                    .map { menu[it] }
                     .forEach { it.isChecked = it.itemId == item }
         }
 

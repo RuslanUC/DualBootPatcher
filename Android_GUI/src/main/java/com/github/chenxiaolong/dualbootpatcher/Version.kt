@@ -19,7 +19,7 @@ package com.github.chenxiaolong.dualbootpatcher
 
 import java.util.regex.Pattern
 
-class Version @Throws(Version.VersionParseException::class)
+class Version @Throws(VersionParseException::class)
 constructor(versionString: String) : Comparable<Version> {
     private var majorVer: Int = 0
     private var minorVer: Int = 0
@@ -32,7 +32,7 @@ constructor(versionString: String) : Comparable<Version> {
         parseVersion(versionString)
     }
 
-    @Throws(Version.VersionParseException::class)
+    @Throws(VersionParseException::class)
     private fun parseVersion(versionString: String) {
         val p = Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)(.*?)?(?:-.+)?")
         val m = p.matcher(versionString)
@@ -41,11 +41,11 @@ constructor(versionString: String) : Comparable<Version> {
             throw VersionParseException("Invalid version number: $versionString")
         }
 
-        majorVer = Integer.parseInt(m.group(1))
-        minorVer = Integer.parseInt(m.group(2))
-        patchVer = Integer.parseInt(m.group(3))
+        majorVer = Integer.parseInt(m.group(1)!!)
+        minorVer = Integer.parseInt(m.group(2)!!)
+        patchVer = Integer.parseInt(m.group(3)!!)
         val suffix = m.group(4)
-        if (suffix != null && !suffix.isEmpty()) {
+        if (suffix != null && suffix.isNotEmpty()) {
             this.suffix = suffix
         }
 
@@ -54,7 +54,7 @@ constructor(versionString: String) : Comparable<Version> {
         }
     }
 
-    @Throws(Version.VersionParseException::class)
+    @Throws(VersionParseException::class)
     private fun parseRevision() {
         val p = Pattern.compile("\\.r(\\d+)(?:\\.g(.+))?")
         val m = p.matcher(suffix!!)
@@ -63,7 +63,7 @@ constructor(versionString: String) : Comparable<Version> {
             throw VersionParseException("Invalid version suffix")
         }
 
-        revision = Integer.parseInt(m.group(1))
+        revision = Integer.parseInt(m.group(1)!!)
         gitCommit = m.group(2)
     }
 

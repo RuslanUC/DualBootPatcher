@@ -80,6 +80,7 @@ import com.github.chenxiaolong.dualbootpatcher.views.DragSwipeItemTouchCallback.
 import com.github.clans.fab.FloatingActionButton
 import com.github.clans.fab.FloatingActionMenu
 import java.util.*
+import androidx.core.net.toUri
 
 class InAppFlashingFragment : Fragment(), FirstUseDialogListener, RomIdSelectionDialogListener,
         NamedSlotIdInputDialogListener, ChangeInstallLocationDialogListener,
@@ -186,7 +187,7 @@ class InAppFlashingFragment : Fragment(), FirstUseDialogListener, RomIdSelection
         }
 
         activityCallback = activity as OnReadyStateChangedListener
-        activityCallback.onReady(!pendingActions.isEmpty())
+        activityCallback.onReady(pendingActions.isNotEmpty())
 
         prefs = activity!!.getSharedPreferences("settings", 0)
 
@@ -311,13 +312,14 @@ class InAppFlashingFragment : Fragment(), FirstUseDialogListener, RomIdSelection
     }
 
     private fun addBackup() {
-        selectedBackupDirUri = Uri.parse(prefs.getString(
-                Constants.Preferences.BACKUP_DIRECTORY_URI,
-                Constants.Defaults.BACKUP_DIRECTORY_URI))
+        selectedBackupDirUri = prefs.getString(
+            Constants.Preferences.BACKUP_DIRECTORY_URI,
+            Constants.Defaults.BACKUP_DIRECTORY_URI
+        )!!.toUri()
 
         val backupNames = getDirectories(activity, selectedBackupDirUri)
 
-        if (backupNames == null || backupNames.isEmpty()) {
+        if (backupNames.isEmpty()) {
             Toast.makeText(activity, R.string.in_app_flashing_no_backups_available,
                     Toast.LENGTH_LONG).show()
         } else {
@@ -352,13 +354,13 @@ class InAppFlashingFragment : Fragment(), FirstUseDialogListener, RomIdSelection
             }
         } else {
             val error = when (result) {
-                SwitcherUtils.VerificationResult.ERROR_ZIP_NOT_FOUND ->
+                VerificationResult.ERROR_ZIP_NOT_FOUND ->
                     getString(R.string.in_app_flashing_error_zip_not_found)
-                SwitcherUtils.VerificationResult.ERROR_ZIP_READ_FAIL ->
+                VerificationResult.ERROR_ZIP_READ_FAIL ->
                     getString(R.string.in_app_flashing_error_zip_read_fail)
-                SwitcherUtils.VerificationResult.ERROR_NOT_MULTIBOOT ->
+                VerificationResult.ERROR_NOT_MULTIBOOT ->
                     getString(R.string.in_app_flashing_error_not_multiboot)
-                SwitcherUtils.VerificationResult.ERROR_VERSION_TOO_OLD -> String.format(
+                VerificationResult.ERROR_VERSION_TOO_OLD -> String.format(
                         getString(R.string.in_app_flashing_error_version_too_old),
                         MbtoolUtils.getMinimumRequiredVersion(Feature.IN_APP_INSTALLATION))
                 else -> throw IllegalStateException("Invalid verification result ID")
@@ -593,11 +595,11 @@ class InAppFlashingFragment : Fragment(), FirstUseDialogListener, RomIdSelection
     )
 
     private class PendingActionViewHolder(itemView: View) : ViewHolder(itemView) {
-        internal var vCard: CardView = itemView as CardView
-        internal var vTitle: TextView = vCard.findViewById(R.id.action_title)
-        internal var vSubtitle1: TextView = vCard.findViewById(R.id.action_subtitle1)
-        internal var vSubtitle2: TextView = vCard.findViewById(R.id.action_subtitle2)
-        internal var vSubtitle3: TextView = vCard.findViewById(R.id.action_subtitle3)
+        var vCard: CardView = itemView as CardView
+        var vTitle: TextView = vCard.findViewById(R.id.action_title)
+        var vSubtitle1: TextView = vCard.findViewById(R.id.action_subtitle1)
+        var vSubtitle2: TextView = vCard.findViewById(R.id.action_subtitle2)
+        var vSubtitle3: TextView = vCard.findViewById(R.id.action_subtitle3)
     }
 
     private class PendingActionCardAdapter(
@@ -615,7 +617,7 @@ class InAppFlashingFragment : Fragment(), FirstUseDialogListener, RomIdSelection
             val pa = items[position]
 
             when (pa.type) {
-                MbtoolAction.Type.ROM_INSTALLER -> {
+                Type.ROM_INSTALLER -> {
                     val params = pa.romInstallerParams
 
                     holder.vTitle.setText(R.string.in_app_flashing_action_flash_file)
@@ -625,7 +627,7 @@ class InAppFlashingFragment : Fragment(), FirstUseDialogListener, RomIdSelection
                             R.string.in_app_flashing_location, params.romId)
                     holder.vSubtitle3.visibility = View.GONE
                 }
-                MbtoolAction.Type.BACKUP_RESTORE -> {
+                Type.BACKUP_RESTORE -> {
                     val params = pa.backupRestoreParams
 
                     holder.vTitle.setText(R.string.in_app_flashing_action_restore_backup)
@@ -720,7 +722,7 @@ class InAppFlashingFragment : Fragment(), FirstUseDialogListener, RomIdSelection
         private val CONFIRM_DIALOG_SELECT_TARGETS =
                 "${InAppFlashingFragment::class.java.name}.confirm.select_targets"
 
-        private fun getDirectories(context: Context?, uri: Uri?): Array<String>? {
+        private fun getDirectories(context: Context?, uri: Uri?): Array<String> {
             val directory = FileUtils.getDocumentFile(context!!, uri!!)
             val files = directory.listFiles()
 

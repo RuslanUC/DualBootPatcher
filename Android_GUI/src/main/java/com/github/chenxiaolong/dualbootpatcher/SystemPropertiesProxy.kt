@@ -152,7 +152,7 @@ object SystemPropertiesProxy {
             set.invoke(sp, key, `val`)
         } catch (e: IllegalArgumentException) {
             throw e
-        } catch (e: Exception) {
+        } catch (_: Exception) {
         }
     }
 }

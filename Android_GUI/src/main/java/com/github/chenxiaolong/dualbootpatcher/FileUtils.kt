@@ -17,7 +17,6 @@
 
 package com.github.chenxiaolong.dualbootpatcher
 
-import android.annotation.TargetApi
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
@@ -83,17 +82,17 @@ object FileUtils {
                         throw IOException("Illegal mount entry: $line")
                     }
 
-                    val mnt_freq: Int
-                    val mnt_passno: Int
+                    val mntFreq: Int
+                    val mntPassno: Int
 
                     try {
-                        mnt_freq = Integer.parseInt(pieces[4])
+                        mntFreq = Integer.parseInt(pieces[4])
                     } catch (e: NumberFormatException) {
                         throw IOException("Illegal mnt_freq value: ${pieces[4]}", e)
                     }
 
                     try {
-                        mnt_passno = Integer.parseInt(pieces[5])
+                        mntPassno = Integer.parseInt(pieces[5])
                     } catch (e: NumberFormatException) {
                         throw IOException("Illegal mnt_passno value: ${pieces[5]}", e)
                     }
@@ -103,8 +102,8 @@ object FileUtils {
                             UNESCAPE_MOUNT_ENTRY.translate(pieces[1]),
                             UNESCAPE_MOUNT_ENTRY.translate(pieces[2]),
                             UNESCAPE_MOUNT_ENTRY.translate(pieces[3]),
-                            mnt_freq,
-                            mnt_passno
+                            mntFreq,
+                            mntPassno
                     ))
                 }
             }
@@ -112,13 +111,13 @@ object FileUtils {
             return entries.toTypedArray()
         }
 
-    private fun canHandleIntent(pm: PackageManager, intent: Intent?): Boolean {
+    private fun canHandleIntent(pm: PackageManager, intent: Intent): Boolean {
         val list = pm.queryIntentActivities(intent, 0)
         return list.size > 0
     }
 
     private fun shouldHaveNativeSaf(): Boolean {
-        return !FORCE_PATH_CHOOSER && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT
+        return !FORCE_PATH_CHOOSER
     }
 
     private fun isOxygenOS(context: Context): Boolean {
@@ -151,7 +150,6 @@ object FileUtils {
         intent.putExtra(Intent.EXTRA_TITLE, defaultName)
     }
 
-    @TargetApi(Build.VERSION_CODES.KITKAT)
     private fun buildSafOpenDocumentIntent(mimeType: String?): Intent {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
         setCommonNativeSafOptions(intent)
@@ -159,7 +157,6 @@ object FileUtils {
         return intent
     }
 
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     private fun buildSafOpenDocumentTreeIntent(): Intent {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
         setCommonNativeSafOptions(intent)
@@ -173,7 +170,6 @@ object FileUtils {
         return intent
     }
 
-    @TargetApi(Build.VERSION_CODES.KITKAT)
     private fun buildSafCreateDocumentIntent(mimeType: String?, defaultName: String?): Intent {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
         setCommonNativeSafOptions(intent)
@@ -315,7 +311,7 @@ object FileUtils {
 
     fun toHumanReadableSize(context: Context, size: Long, precision: Long): String {
         val abbrev: Base2Abbrev = BASE2_ABBREVS.firstOrNull { size >= it.factor } ?:
-                return context.getString(R.string.format_bytes, size)
+                return context.getString(R.string.format_bytes, size.toString())
 
         val decimal = String.format("%.${precision}f", size.toDouble() / abbrev.factor)
         return context.getString(abbrev.stringResId, decimal)
@@ -352,7 +348,7 @@ object FileUtils {
                 }
                 FILE_SCHEME -> {
                     metadata.displayName = uri.lastPathSegment
-                    metadata.size = File(uri.path).length()
+                    metadata.size = File(uri.path!!).length()
                 }
                 else -> throw IllegalArgumentException("Cannot handle URI: $uri")
             }
@@ -361,19 +357,18 @@ object FileUtils {
         }.toTypedArray()
     }
 
-    fun getDocumentFile(context: Context, uri: Uri): androidx.documentfile.provider.DocumentFile {
+    fun getDocumentFile(context: Context, uri: Uri): DocumentFile {
         var df: DocumentFile? = null
 
         if (FILE_SCHEME == uri.scheme) {
-            df = DocumentFile.fromFile(File(uri.path))
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT &&
-                SAF_SCHEME == uri.scheme && SAF_AUTHORITY == uri.authority) {
+            df = DocumentFile.fromFile(File(uri.path!!))
+        } else if (SAF_SCHEME == uri.scheme && SAF_AUTHORITY == uri.authority) {
             if (DocumentsContract.isDocumentUri(context, uri)) {
                 df = DocumentFile.fromSingleUri(context, uri)
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
                     && DocumentsContract.isTreeUri(uri)) {
                 df = DocumentFile.fromTreeUri(context, uri)
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            } else {
                 // Best guess is that it's a tree...
                 df = DocumentFile.fromTreeUri(context, uri)
             }
@@ -387,11 +382,11 @@ object FileUtils {
     }
 
     class MountEntry(
-        val mnt_fsname: String,
-        val mnt_dir: String,
-        val mnt_type: String,
-        val mnt_opts: String,
-        val mnt_freq: Int,
-        val mnt_passno: Int
+        val mntFsname: String,
+        val mntDir: String,
+        val mntType: String,
+        val mntOpts: String,
+        val mntFreq: Int,
+        val mntPassno: Int
     )
 }

@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
+import androidx.core.util.size
 
 class PatcherService : ThreadPoolService() {
     /** List of callbacks for receiving events  */
@@ -59,8 +60,8 @@ class PatcherService : ThreadPoolService() {
     val patchFileTaskIds: IntArray
         get() {
             patcherTasksLock.read {
-                val taskIds = IntArray(patcherTasks.size())
-                for (i in 0 until patcherTasks.size()) {
+                val taskIds = IntArray(patcherTasks.size)
+                for (i in 0 until patcherTasks.size) {
                     taskIds[i] = patcherTasks.keyAt(i)
                 }
                 return taskIds
@@ -76,7 +77,7 @@ class PatcherService : ThreadPoolService() {
         // Update WeakReferences in all of our tasks. This is extremely ugly, but we need to
         // preserve our tasks throughout the service lifecycle.
         callbacksLock.write {
-            for (i in 0 until patcherTasks.size()) {
+            for (i in 0 until patcherTasks.size) {
                 patcherTasks.valueAt(i).service = this
             }
         }
@@ -284,7 +285,7 @@ class PatcherService : ThreadPoolService() {
         task.device = device
     }
 
-    fun getDevice(taskId: Int): Device? {
+    fun getDevice(taskId: Int): Device {
         val task = getTask(taskId)
         return task.device
     }
@@ -295,7 +296,7 @@ class PatcherService : ThreadPoolService() {
         task.romId = romId
     }
 
-    fun getRomId(taskId: Int): String? {
+    fun getRomId(taskId: Int): String {
         val task = getTask(taskId)
         return task.romId
     }
@@ -430,17 +431,17 @@ class PatcherService : ThreadPoolService() {
             /** Task ID  */
             private val taskId: Int,
             /** Patcher ID for creating [.patcher]  */
-            internal val patcherId: String,
+            val patcherId: String,
             /** URI of input file  */
-            internal val inputUri: Uri,
+            val inputUri: Uri,
             /** URI of output file  */
-            internal val outputUri: Uri,
+            val outputUri: Uri,
             /** Display name  */
-            internal val displayName: String,
+            val displayName: String,
             /** Target [Device]  */
-            internal var device: Device,
+            var device: Device,
             /** Target ROM ID  */
-            internal var romId: String
+            var romId: String
     ) : BaseTask(service), ProgressListener {
         /** libmbpatcher [PatcherConfig] object  */
         private var pc: PatcherConfig? = null
@@ -452,26 +453,26 @@ class PatcherService : ThreadPoolService() {
         // State information
 
         /** Patching state  */
-        internal var state = AtomicReference(PatchFileState.QUEUED)
+        var state = AtomicReference(PatchFileState.QUEUED)
         /** Whether the patching was cancelled  */
-        internal var cancelled = AtomicBoolean(false)
+        var cancelled = AtomicBoolean(false)
         /** Details text  */
-        internal var details = AtomicReference<String>()
+        var details = AtomicReference<String>()
         /** Current bytes processed  */
-        internal var bytes = AtomicLong(0)
+        var bytes = AtomicLong(0)
         /** Maximum bytes  */
-        internal var maxBytes = AtomicLong(0)
+        var maxBytes = AtomicLong(0)
         /** Current files processed  */
-        internal var files = AtomicLong(0)
+        var files = AtomicLong(0)
         /** Maximum files  */
-        internal var maxFiles = AtomicLong(0)
+        var maxFiles = AtomicLong(0)
 
         // Completion information
 
         /** Whether patching was successful  */
-        internal var successful = AtomicBoolean(false)
+        var successful = AtomicBoolean(false)
         /** Error code if patching failed  */
-        internal var errorCode = AtomicInteger(0)
+        var errorCode = AtomicInteger(0)
 
         fun cancel() {
             // If the file was patching, then it should be considered cancelled

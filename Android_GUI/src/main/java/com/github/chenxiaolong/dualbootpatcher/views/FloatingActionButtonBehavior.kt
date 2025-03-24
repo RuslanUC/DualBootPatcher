@@ -17,6 +17,7 @@
 
 package com.github.chenxiaolong.dualbootpatcher.views
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AttributeSet
 import android.view.View
@@ -30,11 +31,13 @@ class FloatingActionButtonBehavior : CoordinatorLayout.Behavior<FloatingActionBu
 
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
 
+    @SuppressLint("RestrictedApi")
     override fun layoutDependsOn(parent: CoordinatorLayout, child: FloatingActionButton,
                                  dependency: View): Boolean {
         return dependency is SnackbarLayout
     }
 
+    @SuppressLint("RestrictedApi")
     override fun onDependentViewChanged(parent: CoordinatorLayout, child: FloatingActionButton,
                                         dependency: View): Boolean {
         if (dependency is SnackbarLayout) {

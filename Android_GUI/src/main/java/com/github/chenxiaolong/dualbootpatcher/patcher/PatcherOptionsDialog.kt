@@ -108,7 +108,7 @@ class PatcherOptionsDialog : DialogFragment() {
 
         model = ViewModelProviders.of(this)[PatcherOptionsViewModel::class.java]
 
-        model.optionsData.observe(this, Observer {
+        model.optionsData.observe(this) {
             refreshDevices(it!!.devices, it.currentDevice)
             refreshRomIds(it.installLocations, it.templateLocations)
 
@@ -118,51 +118,55 @@ class PatcherOptionsDialog : DialogFragment() {
             if (lastLocationPosition != AppCompatSpinner.INVALID_POSITION) {
                 locationSpinner.setSelection(lastLocationPosition)
             }
-        })
+        }
 
-        model.selectedLocation.observe(this, Observer {
+        model.selectedLocation.observe(this) {
             if (it != null) {
                 romIdDesc.text = it.getDescription(context!!)
             } else {
                 romIdDesc.setText(R.string.install_location_named_slot_id_empty)
             }
-        })
+        }
 
-        model.validationState.observe(this, Observer {
+        model.validationState.observe(this) {
             val enabled = when (it!!) {
                 PatcherOptionsValidationState.VALID -> {
                     true
                 }
+
                 PatcherOptionsValidationState.INVALID -> {
                     templateSuffixEditor.error = getString(
-                            R.string.install_location_named_slot_id_error_invalid)
+                        R.string.install_location_named_slot_id_error_invalid
+                    )
                     false
                 }
+
                 PatcherOptionsValidationState.EMPTY -> {
                     templateSuffixEditor.error = getString(
-                            R.string.install_location_named_slot_id_error_is_empty)
+                        R.string.install_location_named_slot_id_error_is_empty
+                    )
                     false
                 }
             }
 
             dialog.setActionButtonEnabled(WhichButton.POSITIVE, enabled)
-        })
+        }
 
-        model.suffixEditorVisible.observe(this, Observer {
+        model.suffixEditorVisible.observe(this) {
             templateSuffixEditor.visibility = if (it!!) View.VISIBLE else View.GONE
-        })
+        }
 
-        model.deviceSelectionEvent.observe(this, Observer {
+        model.deviceSelectionEvent.observe(this) {
             deviceSpinner.setSelection(it!!)
-        })
+        }
 
-        model.locationSelectionEvent.observe(this, Observer {
+        model.locationSelectionEvent.observe(this) {
             locationSpinner.setSelection(it!!)
-        })
+        }
 
-        model.suffixSetEvent.observe(this, Observer {
+        model.suffixSetEvent.observe(this) {
             templateSuffixEditor.setText(it)
-        })
+        }
 
         if (savedInstanceState != null) {
             lastDevicePosition = savedInstanceState.getInt(STATE_DEVICE_POSITION,

@@ -45,9 +45,7 @@ class PathChooserActivity : AppCompatActivity(), FileChooserDialogListener {
             val action = intent.action
             val mimeType = intent.type
             val defaultName = intent.getStringExtra(Intent.EXTRA_TITLE)
-            val type: Type
-
-            type = when (action) {
+            val type = when (action) {
                 ACTION_OPEN_FILE -> Type.OPEN_FILE
                 ACTION_OPEN_DIRECTORY -> Type.OPEN_DIRECTORY
                 ACTION_SAVE_FILE -> Type.SAVE_FILE

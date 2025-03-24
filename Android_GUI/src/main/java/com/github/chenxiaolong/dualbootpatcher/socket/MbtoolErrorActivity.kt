@@ -156,20 +156,20 @@ class MbtoolErrorActivity : AppCompatActivity(), ServiceConnection, GenericYesNo
         val dialog: DialogFragment
 
         when (reason) {
-            MbtoolException.Reason.DAEMON_NOT_RUNNING -> {
+            Reason.DAEMON_NOT_RUNNING -> {
                 val builder = GenericProgressDialog.Builder()
                 builder.message(R.string.mbtool_dialog_starting_mbtool)
                 dialog = builder.build()
                 startMbtoolUpdate()
             }
-            MbtoolException.Reason.SIGNATURE_CHECK_FAIL -> {
+            Reason.SIGNATURE_CHECK_FAIL -> {
                 val builder = GenericYesNoDialog.Builder()
                 builder.message(R.string.mbtool_dialog_signature_check_fail)
                 builder.positive(R.string.proceed)
                 builder.negative(R.string.cancel)
                 dialog = builder.buildFromActivity(DIALOG_TAG)
             }
-            MbtoolException.Reason.INTERFACE_NOT_SUPPORTED, MbtoolException.Reason.VERSION_TOO_OLD -> {
+            Reason.INTERFACE_NOT_SUPPORTED, Reason.VERSION_TOO_OLD -> {
                 val builder = GenericYesNoDialog.Builder()
                 builder.message(R.string.mbtool_dialog_version_too_old)
                 builder.positive(R.string.proceed)

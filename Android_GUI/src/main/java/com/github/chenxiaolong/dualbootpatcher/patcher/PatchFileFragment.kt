@@ -17,6 +17,7 @@
 
 package com.github.chenxiaolong.dualbootpatcher.patcher
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ComponentName
 import android.content.ContentResolver
@@ -267,7 +268,7 @@ class PatchFileFragment : Fragment(), ServiceConnection, PatcherOptionsDialogLis
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.check_item -> {
-                executeNeedsService(Runnable {
+                executeNeedsService {
                     for ((index, patchItem) in items.withIndex()) {
                         if (patchItem.state === PatchFileState.QUEUED) {
                             patchItem.state = PatchFileState.PENDING
@@ -275,16 +276,17 @@ class PatchFileFragment : Fragment(), ServiceConnection, PatcherOptionsDialogLis
                             adapter.notifyItemChanged(index)
                         }
                     }
-                })
+                }
                 return true
             }
             R.id.cancel_item -> {
-                executeNeedsService(Runnable {
+                executeNeedsService {
                     // Cancel the tasks in reverse order since there's a chance that the next task
                     // will start when the previous one is cancelled
                     for ((index, patchItem) in items.reversed().withIndex()) {
                         if (patchItem.state === PatchFileState.IN_PROGRESS
-                                || patchItem.state === PatchFileState.PENDING) {
+                            || patchItem.state === PatchFileState.PENDING
+                        ) {
                             service!!.cancelPatching(patchItem.taskId)
                             if (patchItem.state === PatchFileState.PENDING) {
                                 patchItem.state = PatchFileState.QUEUED
@@ -292,7 +294,7 @@ class PatchFileFragment : Fragment(), ServiceConnection, PatcherOptionsDialogLis
                             }
                         }
                     }
-                })
+                }
                 return true
             }
         }
@@ -461,6 +463,7 @@ class PatchFileFragment : Fragment(), ServiceConnection, PatcherOptionsDialogLis
     /**
      * Called when everything has been initialized and we have the necessary permissions
      */
+    @SuppressLint("NotifyDataSetChanged")
     private fun onReady() {
         // Load patch file items from the service
         val taskIds = service!!.patchFileTaskIds
@@ -471,8 +474,8 @@ class PatchFileFragment : Fragment(), ServiceConnection, PatcherOptionsDialogLis
                     service!!.getInputUri(taskId),
                     service!!.getOutputUri(taskId),
                     service!!.getDisplayName(taskId),
-                    service!!.getDevice(taskId)!!,
-                    service!!.getRomId(taskId)!!
+                    service!!.getDevice(taskId),
+                    service!!.getRomId(taskId)
             )
             item.taskId = taskId
             item.state = service!!.getState(taskId)
@@ -565,11 +568,7 @@ class PatchFileFragment : Fragment(), ServiceConnection, PatcherOptionsDialogLis
     private fun startFileSelection(patcherId: String) {
         selectedPatcherId = patcherId
 
-        if (PermissionUtils.supportsRuntimePermissions()) {
-            requestPermissions()
-        } else {
-            selectInputUri()
-        }
+        requestPermissions()
     }
 
     private fun requestPermissions() {
@@ -633,8 +632,8 @@ class PatchFileFragment : Fragment(), ServiceConnection, PatcherOptionsDialogLis
                     "(\\.tar\\.md5(\\.gz|\\.xz)?|\\.zip)$".toRegex(), "")
             extension = "zip"
         } else {
-            baseName = File(selectedInputFileName).nameWithoutExtension
-            extension = File(selectedInputFileName).extension
+            baseName = File(selectedInputFileName!!).nameWithoutExtension
+            extension = File(selectedInputFileName!!).extension
         }
         val sb = StringBuilder()
         sb.append(baseName)
@@ -770,7 +769,7 @@ class PatchFileFragment : Fragment(), ServiceConnection, PatcherOptionsDialogLis
     private fun addOrEditItem() {
         if (selectedTaskId >= 0) {
             // Edit existing task
-            executeNeedsService(Runnable {
+            executeNeedsService {
                 val index = itemsMap[selectedTaskId]
                 val item = items[index]
                 item.device = selectedDevice!!
@@ -779,7 +778,7 @@ class PatchFileFragment : Fragment(), ServiceConnection, PatcherOptionsDialogLis
 
                 service!!.setDevice(selectedTaskId, selectedDevice!!)
                 service!!.setRomId(selectedTaskId, selectedRomId!!)
-            })
+            }
             return
         }
 
@@ -794,19 +793,21 @@ class PatchFileFragment : Fragment(), ServiceConnection, PatcherOptionsDialogLis
             }
         }
 
-        executeNeedsService(Runnable {
+        executeNeedsService {
             val pf = PatchFileItem(
-                    selectedPatcherId!!,
-                    selectedInputUri!!,
-                    selectedOutputUri!!,
-                    selectedInputFileName!!,
-                    selectedDevice!!,
-                    selectedRomId!!
+                selectedPatcherId!!,
+                selectedInputUri!!,
+                selectedOutputUri!!,
+                selectedInputFileName!!,
+                selectedDevice!!,
+                selectedRomId!!
             )
             pf.state = PatchFileState.QUEUED
 
-            val taskId = service!!.addPatchFileTask(pf.patcherId, pf.inputUri, pf.outputUri,
-                    pf.displayName, pf.device, pf.romId)
+            val taskId = service!!.addPatchFileTask(
+                pf.patcherId, pf.inputUri, pf.outputUri,
+                pf.displayName, pf.device, pf.romId
+            )
             pf.taskId = taskId
 
             items.add(pf)
@@ -814,7 +815,7 @@ class PatchFileFragment : Fragment(), ServiceConnection, PatcherOptionsDialogLis
             adapter.notifyItemInserted(items.size - 1)
             updateAddZipMessage()
             updateToolbarIcons()
-        })
+        }
     }
 
     /**

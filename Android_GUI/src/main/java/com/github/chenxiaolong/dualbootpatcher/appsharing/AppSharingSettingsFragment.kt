@@ -70,15 +70,10 @@ class AppSharingSettingsFragment : PreferenceFragmentCompat(), OnPreferenceChang
 
         updateState()
 
-        if (PermissionUtils.supportsRuntimePermissions()) {
-            if (savedInstanceState == null) {
-                requestPermissions()
-            } else if (PermissionUtils.hasPermissions(
-                    activity!!, PermissionUtils.STORAGE_PERMISSIONS)) {
-                onPermissionsGranted()
-            }
-        } else {
-            startLoading()
+        if (savedInstanceState == null) {
+            requestPermissions()
+        } else if (PermissionUtils.hasPermissions(activity!!, PermissionUtils.STORAGE_PERMISSIONS)) {
+            onPermissionsGranted()
         }
     }
 
@@ -264,7 +259,7 @@ class AppSharingSettingsFragment : PreferenceFragmentCompat(), OnPreferenceChang
         }
 
         override fun loadInBackground(): NeededInfo? {
-            var currentRom: RomInformation? = null
+            var currentRom: RomInformation?
 
             try {
                 MbtoolConnection(context).use {

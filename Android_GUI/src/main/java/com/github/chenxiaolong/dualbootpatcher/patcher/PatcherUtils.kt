@@ -128,7 +128,7 @@ object PatcherUtils {
                 val validDevices = ArrayList<Device>()
                 Device.newListFromJson(json)?.filterTo(validDevices) { it.validate() == 0L }
 
-                if (!validDevices.isEmpty()) {
+                if (validDevices.isNotEmpty()) {
                     this.devices = validDevices
                 }
             } catch (e: IOException) {
@@ -170,18 +170,18 @@ object PatcherUtils {
     @Synchronized
     fun extractPatcher(context: Context) {
         context.cacheDir.listFiles()
-                .filter {
+                ?.filter {
                     it.name.startsWith("DualBootPatcherAndroid")
                             || it.name.startsWith("tmp")
                             || it.name.startsWith("data-")
                 }
-                .forEach { it.deleteRecursively() }
+                ?.forEach { it.deleteRecursively() }
         context.filesDir.listFiles()
-                .filter { it.isDirectory }
-                .forEach { path ->
+                ?.filter { it.isDirectory }
+                ?.forEach { path ->
                     path.listFiles()
-                            .filter { it.name.contains("tmp") }
-                            .forEach { it.deleteRecursively() }
+                            ?.filter { it.name.contains("tmp") }
+                            ?.forEach { it.deleteRecursively() }
                 }
 
         val targetFile = getTargetFile(context)
@@ -195,7 +195,7 @@ object PatcherUtils {
             }
 
             // Remove all previous files
-            context.filesDir.listFiles().forEach {
+            context.filesDir.listFiles()?.forEach {
                 it.deleteRecursively()
             }
 

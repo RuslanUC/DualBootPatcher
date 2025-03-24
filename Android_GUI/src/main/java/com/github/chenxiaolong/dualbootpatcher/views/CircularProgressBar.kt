@@ -32,6 +32,7 @@ import android.view.View
 import com.github.chenxiaolong.dualbootpatcher.R
 
 import java.util.Random
+import androidx.core.content.withStyledAttributes
 
 class CircularProgressBar @JvmOverloads constructor(
         context: Context, attrs: AttributeSet? = null,
@@ -68,7 +69,7 @@ class CircularProgressBar @JvmOverloads constructor(
 
             invalidate()
         }
-    private val randomRotation: Boolean
+    private var randomRotation: Boolean = false
 
     private var translationOffsetX: Float = 0f
     private var translationOffsetY: Float = 0f
@@ -88,24 +89,34 @@ class CircularProgressBar @JvmOverloads constructor(
 
     init {
         // load the styled attributes and set their properties
-        val attributes = context.obtainStyledAttributes(attrs,
-                R.styleable.CircularProgressBar, defStyle, 0)
+        context.withStyledAttributes(
+            attrs,
+            R.styleable.CircularProgressBar, defStyle, 0
+        ) {
 
-        progressColor = attributes.getColor(
-                R.styleable.CircularProgressBar_progress_color, Color.BLACK)
-        setProgressBackgroundColor(attributes.getColor(
-                R.styleable.CircularProgressBar_background_color, Color.WHITE))
-        progress = attributes.getFloat(
-                R.styleable.CircularProgressBar_progress, 0.0f)
+            progressColor = getColor(
+                R.styleable.CircularProgressBar_progress_color, Color.BLACK
+            )
+            setProgressBackgroundColor(
+                getColor(
+                    R.styleable.CircularProgressBar_background_color, Color.WHITE
+                )
+            )
+            progress = getFloat(
+                R.styleable.CircularProgressBar_progress, 0.0f
+            )
 
-        borderWidth = attributes.getDimension(
-                R.styleable.CircularProgressBar_border_width, dpi2px(1f))
-        progressWidth = attributes.getDimension(
-                R.styleable.CircularProgressBar_progress_width, dpi2px(25f))
-        randomRotation = attributes.getBoolean(
-                R.styleable.CircularProgressBar_random_rotation, false)
+            borderWidth = getDimension(
+                R.styleable.CircularProgressBar_border_width, dpi2px(1f)
+            )
+            progressWidth = getDimension(
+                R.styleable.CircularProgressBar_progress_width, dpi2px(25f)
+            )
+            randomRotation = getBoolean(
+                R.styleable.CircularProgressBar_random_rotation, false
+            )
 
-        attributes.recycle()
+        }
 
         updateBackgroundColor()
 
@@ -133,9 +144,9 @@ class CircularProgressBar @JvmOverloads constructor(
         progress = state.progress
     }
 
-    override fun onSaveInstanceState(): Parcelable? {
+    override fun onSaveInstanceState(): Parcelable {
         val superState = super.onSaveInstanceState()
-        val ss = SavedState(superState)
+        val ss = SavedState(superState!!)
         ss.backgroundColor = _backgroundColor
         ss.progressColor = _progressColor
         ss.progress = progress
@@ -169,8 +180,8 @@ class CircularProgressBar @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val height = View.getDefaultSize(suggestedMinimumHeight, heightMeasureSpec)
-        val width = View.getDefaultSize(suggestedMinimumWidth, widthMeasureSpec)
+        val height = getDefaultSize(suggestedMinimumHeight, heightMeasureSpec)
+        val width = getDefaultSize(suggestedMinimumWidth, widthMeasureSpec)
         val min = Math.min(width, height)
         setMeasuredDimension(min, height)
 
@@ -223,7 +234,7 @@ class CircularProgressBar @JvmOverloads constructor(
                 resources.displayMetrics)
     }
 
-    class SavedState : View.BaseSavedState {
+    class SavedState : BaseSavedState {
         internal var backgroundColor: Int = 0
         internal var progressColor: Int = 0
         internal var progress: Float = 0f

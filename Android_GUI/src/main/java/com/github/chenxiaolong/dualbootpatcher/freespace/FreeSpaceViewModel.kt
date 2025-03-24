@@ -54,40 +54,31 @@ internal class FreeSpaceViewModel : ViewModel() {
 
         for (entry in entries) {
             // Ignore irrelevant filesystems
-            if (SKIPPED_FS_TYPES.contains(entry.mnt_type)
-                    || SKIPPED_FS_NAMES.contains(entry.mnt_fsname)
-                    || entry.mnt_dir.startsWith("/mnt")
-                    || entry.mnt_dir.startsWith("/dev")
-                    || entry.mnt_dir.startsWith("/proc")
-                    || entry.mnt_dir.startsWith("/data/data")) {
+            if (SKIPPED_FS_TYPES.contains(entry.mntType)
+                    || SKIPPED_FS_NAMES.contains(entry.mntFsname)
+                    || entry.mntDir.startsWith("/mnt")
+                    || entry.mntDir.startsWith("/dev")
+                    || entry.mntDir.startsWith("/proc")
+                    || entry.mntDir.startsWith("/data/data")) {
                 continue
             }
 
             val statFs: StatFs
 
             try {
-                statFs = StatFs(entry.mnt_dir)
+                statFs = StatFs(entry.mntDir)
             } catch (e: IllegalArgumentException) {
                 // Thrown if Os.statvfs() throws ErrnoException
-                Log.w(TAG, "Exception during statfs of ${entry.mnt_dir}", e)
+                Log.w(TAG, "Exception during statfs of ${entry.mntDir}", e)
                 continue
             }
 
-            val totalSpace: Long
-            val availSpace: Long
+            val totalSpace = statFs.blockSizeLong * statFs.blockCountLong
+            val availSpace = statFs.blockSizeLong * statFs.availableBlocksLong
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                totalSpace = statFs.blockSizeLong * statFs.blockCountLong
-                availSpace = statFs.blockSizeLong * statFs.availableBlocksLong
-            } else {
-                @Suppress("DEPRECATION")
-                totalSpace = (statFs.blockSize * statFs.blockCount).toLong()
-                @Suppress("DEPRECATION")
-                availSpace = (statFs.blockSize * statFs.availableBlocks).toLong()
-            }
-
-            mounts.add(MountInfo(entry.mnt_dir, entry.mnt_fsname, entry.mnt_type, totalSpace,
-                    availSpace))
+            mounts.add(
+                MountInfo(entry.mntDir, entry.mntFsname, entry.mntType, totalSpace, availSpace)
+            )
         }
 
         _mounts.value = mounts

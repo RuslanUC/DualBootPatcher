@@ -90,7 +90,7 @@ class RomConfig private constructor(private val filename: String) {
         root.appSharing = RawAppSharing()
         root.appSharing!!.individual = isIndivAppSharingEnabled
 
-        if (!sharedPkgs.isEmpty()) {
+        if (sharedPkgs.isNotEmpty()) {
             val packages = ArrayList<RawPackage>()
 
             for ((key, value) in sharedPkgs) {
@@ -127,25 +127,25 @@ class RomConfig private constructor(private val filename: String) {
 
     private class RawRoot {
         @SerializedName("id")
-        internal var id: String? = null
+        var id: String? = null
         @SerializedName("name")
-        internal var name: String? = null
+        var name: String? = null
         @SerializedName("app_sharing")
-        internal var appSharing: RawAppSharing? = null
+        var appSharing: RawAppSharing? = null
     }
 
     private class RawAppSharing {
         @SerializedName("individual")
-        internal var individual: Boolean = false
+        var individual: Boolean = false
         @SerializedName("packages")
-        internal var packages: Array<RawPackage>? = null
+        var packages: Array<RawPackage>? = null
     }
 
     private class RawPackage {
         @SerializedName("pkg_id")
-        internal var pkgId: String? = null
+        var pkgId: String? = null
         @SerializedName("share_data")
-        internal var shareData: Boolean = false
+        var shareData: Boolean = false
     }
 
     @Throws(FileNotFoundException::class)
@@ -163,7 +163,7 @@ class RomConfig private constructor(private val filename: String) {
     @Throws(FileNotFoundException::class)
     private fun saveFile() {
         val configFile = File(filename)
-        configFile.parentFile.mkdirs()
+        configFile.parentFile?.mkdirs()
 
         JsonWriter(OutputStreamWriter(FileOutputStream(configFile), Charsets.UTF_8)).use {
             it.setIndent("    ")

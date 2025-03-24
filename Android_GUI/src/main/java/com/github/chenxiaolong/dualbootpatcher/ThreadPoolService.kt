@@ -54,7 +54,6 @@ open class ThreadPoolService : Service() {
 
     /** Log debug messages if [.DEBUG] is true  */
     private fun log(message: String) {
-        @Suppress("ConstantConditionIf")
         if (DEBUG) {
             Log.d(TAG, message)
         }
@@ -87,7 +86,7 @@ open class ThreadPoolService : Service() {
     /** {@inheritDoc}  */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         log("onStartCommand(intent=$intent, flags=$flags, startId=$startId)")
-        return Service.START_STICKY
+        return START_STICKY
     }
 
     /** {@inheritDoc}  */

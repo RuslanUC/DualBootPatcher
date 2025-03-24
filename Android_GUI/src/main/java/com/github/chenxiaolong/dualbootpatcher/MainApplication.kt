@@ -18,19 +18,16 @@
 package com.github.chenxiaolong.dualbootpatcher
 
 import android.app.Application
-import android.content.Context
 import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
-import com.squareup.leakcanary.LeakCanary
-import com.squareup.leakcanary.RefWatcher
+import leakcanary.AppWatcher
+import leakcanary.LeakCanaryProcess
 
 class MainApplication : Application() {
-    private lateinit var refWatcher: RefWatcher
-
     override fun onCreate() {
         super.onCreate()
 
-        if (LeakCanary.isInAnalyzerProcess(this)) {
+        if (LeakCanaryProcess.isInAnalyzerProcess(this)) {
             return
         }
 
@@ -43,7 +40,7 @@ class MainApplication : Application() {
             defaultUEH?.uncaughtException(thread, throwable)
         }
 
-        refWatcher = LeakCanary.install(this)
+        AppWatcher.manualInstall(this)
 
         val prefs = getSharedPreferences("settings", 0)
         useDarkTheme = prefs.getBoolean("use_dark_theme", false)
@@ -51,11 +48,6 @@ class MainApplication : Application() {
 
     companion object {
         private val TAG = MainApplication::class.java.simpleName
-
-        fun getRefWatcher(context: Context): RefWatcher {
-            val application = context.applicationContext as MainApplication
-            return application.refWatcher
-        }
 
         var useDarkTheme: Boolean
             get() = AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_YES

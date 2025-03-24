@@ -23,8 +23,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
@@ -52,6 +50,7 @@ import com.github.chenxiaolong.dualbootpatcher.switcher.SwitcherService
 import com.github.chenxiaolong.dualbootpatcher.switcher.service.BootUIActionTask.BootUIAction
 import com.github.chenxiaolong.dualbootpatcher.switcher.service.BootUIActionTask.BootUIActionTaskListener
 import java.util.*
+import androidx.core.net.toUri
 
 class RomSettingsFragment : PreferenceFragmentCompat(), OnPreferenceChangeListener,
         ServiceConnection, OnPreferenceClickListener {
@@ -100,7 +99,7 @@ class RomSettingsFragment : PreferenceFragmentCompat(), OnPreferenceChangeListen
         bootUIUninstallPref.onPreferenceClickListener = this
 
         parallelPatchingPref = findPreference(KEY_PARALLEL_PATCHING)
-        parallelPatchingPref.setDefaultValue(Integer.toString(threads))
+        parallelPatchingPref.setDefaultValue(threads.toString())
         parallelPatchingPref.onPreferenceChangeListener = this
         updateParallelPatchingSummary(threads)
 
@@ -358,7 +357,7 @@ class RomSettingsFragment : PreferenceFragmentCompat(), OnPreferenceChangeListen
                     updateParallelPatchingSummary(threads)
                     return true
                 }
-            } catch (e: NumberFormatException) {
+            } catch (_: NumberFormatException) {
             }
             preference === useDarkThemePref -> {
                 // Apply dark theme and recreate activity
@@ -375,16 +374,14 @@ class RomSettingsFragment : PreferenceFragmentCompat(), OnPreferenceChangeListen
             REQUEST_BACKUP_DIRECTORY -> if (data != null && result == Activity.RESULT_OK) {
                 val uri = data.data
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT
-                        && FileUtils.SAF_SCHEME == uri!!.scheme
-                        && FileUtils.SAF_AUTHORITY == uri.scheme) {
+                if (FileUtils.SAF_SCHEME == uri!!.scheme && FileUtils.SAF_AUTHORITY == uri.scheme) {
                     val cr = activity!!.contentResolver
                     cr.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
 
                 val prefs = preferenceManager.sharedPreferences
                 prefs.edit {
-                    putString(Constants.Preferences.BACKUP_DIRECTORY_URI, uri!!.toString())
+                    putString(Constants.Preferences.BACKUP_DIRECTORY_URI, uri.toString())
                 }
 
                 updateBackupDirectorySummary()
@@ -398,15 +395,13 @@ class RomSettingsFragment : PreferenceFragmentCompat(), OnPreferenceChangeListen
         val prefs = preferenceManager.sharedPreferences
         val savedUri = prefs.getString(Constants.Preferences.BACKUP_DIRECTORY_URI,
                 Constants.Defaults.BACKUP_DIRECTORY_URI)
-        val uri = Uri.parse(savedUri)
+        val uri = savedUri!!.toUri()
 
         var name: String? = null
 
         if (FileUtils.FILE_SCHEME == uri.scheme) {
             name = uri.path
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
-                && FileUtils.SAF_SCHEME == uri.scheme
-                && FileUtils.SAF_AUTHORITY == uri.authority) {
+        } else if (FileUtils.SAF_SCHEME == uri.scheme && FileUtils.SAF_AUTHORITY == uri.authority) {
             val documentId = DocumentsContract.getTreeDocumentId(uri)
             val parts = documentId.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
 
@@ -421,7 +416,7 @@ class RomSettingsFragment : PreferenceFragmentCompat(), OnPreferenceChangeListen
     }
 
     private fun updateParallelPatchingSummary(threads: Int) {
-        val summary = getString(R.string.rom_settings_parallel_patching_desc, threads)
+        val summary = getString(R.string.rom_settings_parallel_patching_desc, threads.toString())
         parallelPatchingPref.summary = summary
     }
 

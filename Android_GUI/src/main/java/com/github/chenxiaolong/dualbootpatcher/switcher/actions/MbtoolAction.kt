@@ -59,10 +59,12 @@ class MbtoolAction : Parcelable {
     private constructor(p: Parcel) {
         type = p.readSerializable() as Type
         when (type) {
-            MbtoolAction.Type.ROM_INSTALLER ->
+            Type.ROM_INSTALLER ->
                 _romInstallerParams = p.readParcelable(RomInstallerParams::class.java.classLoader)
-            MbtoolAction.Type.BACKUP_RESTORE ->
+            Type.BACKUP_RESTORE ->
                 _backupRestoreParams = p.readParcelable(BackupRestoreParams::class.java.classLoader)
+
+            null -> TODO()
         }
     }
 
@@ -73,8 +75,9 @@ class MbtoolAction : Parcelable {
     override fun writeToParcel(dest: Parcel, flags: Int) {
         dest.writeSerializable(type)
         when (type) {
-            MbtoolAction.Type.ROM_INSTALLER -> dest.writeParcelable(_romInstallerParams, 0)
-            MbtoolAction.Type.BACKUP_RESTORE -> dest.writeParcelable(_backupRestoreParams, 0)
+            Type.ROM_INSTALLER -> dest.writeParcelable(_romInstallerParams, 0)
+            Type.BACKUP_RESTORE -> dest.writeParcelable(_backupRestoreParams, 0)
+            null -> TODO()
         }
     }
 

@@ -31,7 +31,7 @@ import com.github.chenxiaolong.dualbootpatcher.socket.MbtoolConnection
 
 class AppSharingService : IntentService(TAG) {
     private fun onPackageRemoved(pkg: String) {
-        var info: RomInformation? = null
+        var info: RomInformation?
 
         try {
             MbtoolConnection(this).use {
@@ -68,9 +68,10 @@ class AppSharingService : IntentService(TAG) {
 
     override fun onHandleIntent(intent: Intent?) {
         val action = intent!!.getStringExtra(ACTION)
+        val packageName = intent.getStringExtra(EXTRA_PACKAGE)
 
-        if (ACTION_PACKAGE_REMOVED == action) {
-            onPackageRemoved(intent.getStringExtra(EXTRA_PACKAGE))
+        if (ACTION_PACKAGE_REMOVED == action && packageName != null) {
+            onPackageRemoved(packageName)
         }
     }
 

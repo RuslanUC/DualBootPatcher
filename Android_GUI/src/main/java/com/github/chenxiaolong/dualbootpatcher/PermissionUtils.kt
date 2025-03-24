@@ -28,12 +28,10 @@ object PermissionUtils {
     /**
      * Storage permissions for reading and writing to the internal storage
      */
-    val STORAGE_PERMISSIONS = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE)
-
-    fun supportsRuntimePermissions(): Boolean {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-    }
+    val STORAGE_PERMISSIONS = arrayOf(
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+    )
 
     /**
      * Check if the user has allowed a list of permissions (for Android 6.0+)

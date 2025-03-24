@@ -110,7 +110,9 @@ class MbtoolTaskOutputFragment : Fragment(), ServiceConnection {
                 MbtoolAction.Type.BACKUP_RESTORE -> when (a.backupRestoreParams!!.action) {
                     BackupRestoreParams.Action.BACKUP -> countBackup++
                     BackupRestoreParams.Action.RESTORE -> countRestore++
+                    null -> TODO()
                 }
+                null -> TODO()
             }
         }
 

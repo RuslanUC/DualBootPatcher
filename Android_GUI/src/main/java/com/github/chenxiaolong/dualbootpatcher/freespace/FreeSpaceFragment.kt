@@ -29,6 +29,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.github.chenxiaolong.dualbootpatcher.R
+import androidx.core.graphics.toColorInt
 
 class FreeSpaceFragment : Fragment() {
     private lateinit var adapter: MountInfoAdapter
@@ -74,14 +75,14 @@ class FreeSpaceFragment : Fragment() {
         val FRAGMENT_TAG: String = FreeSpaceFragment::class.java.simpleName
 
         private val COLORS = intArrayOf(
-                Color.parseColor("#F44336"),
-                Color.parseColor("#8E24AA"),
-                Color.parseColor("#3F51B5"),
-                Color.parseColor("#2196F3"),
-                Color.parseColor("#4CAF50"),
-                Color.parseColor("#FBC02D"),
-                Color.parseColor("#E65100"),
-                Color.parseColor("#607D8B")
+            "#F44336".toColorInt(),
+            "#8E24AA".toColorInt(),
+            "#3F51B5".toColorInt(),
+            "#2196F3".toColorInt(),
+            "#4CAF50".toColorInt(),
+            "#FBC02D".toColorInt(),
+            "#E65100".toColorInt(),
+            "#607D8B".toColorInt()
         )
 
         fun newInstance(): FreeSpaceFragment {

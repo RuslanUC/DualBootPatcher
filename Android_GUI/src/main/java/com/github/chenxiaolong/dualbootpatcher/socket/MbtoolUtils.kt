@@ -32,7 +32,6 @@ object MbtoolUtils {
     private val minVersionMap = HashMap<Feature, Version>()
 
     init {
-        @Suppress("ConstantConditionIf")
         if (BuildConfig.BUILD_TYPE == "ci") {
             // Snapshot builds
             minVersionMap[Feature.DAEMON] = Version("9.1.0.r54")

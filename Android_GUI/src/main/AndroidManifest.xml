@@ -18,7 +18,6 @@
 -->
 
 <manifest
-    package="com.github.chenxiaolong.dualbootpatcher"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:installLocation="internalOnly">
@@ -27,6 +26,13 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission"/>
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+        </intent>
+    </queries>
 
     <application
         android:name=".MainApplication"
@@ -38,6 +44,7 @@
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name_release"
+            android:exported="true"
             android:theme="@style/DrawerActivityTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -72,7 +79,8 @@
         <activity
             android:name=".patcher.AutomatedPatcherActivity"
             android:excludeFromRecents="true"
-            android:label="@string/title_patch_zip">
+            android:label="@string/title_patch_zip"
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.github.chenxiaolong.dualbootpatcher.PATCH_FILE" />
 
@@ -82,7 +90,8 @@
         <activity
             android:name=".switcher.AutomatedSwitcherActivity"
             android:excludeFromRecents="true"
-            android:theme="@style/TransparentActivityTheme">
+            android:theme="@style/TransparentActivityTheme"
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.github.chenxiaolong.dualbootpatcher.SWITCH_ROM" />
 
@@ -101,7 +110,7 @@
             android:theme="@style/TransparentActivityTheme">
         </activity>
 
-        <receiver android:name=".appsharing.AppSharingEventReceiver">
+        <receiver android:name=".appsharing.AppSharingEventReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.PACKAGE_FULLY_REMOVED" />
 

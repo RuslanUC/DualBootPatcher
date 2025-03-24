@@ -46,7 +46,7 @@ class AppSharingChangeSharedDialog : DialogFragment() {
         val items = listOf(shareDataItem)
         val message = StringBuilder()
 
-        if (!romsUsingSharedData!!.isEmpty()) {
+        if (romsUsingSharedData!!.isNotEmpty()) {
             val fmt = getString(R.string.indiv_app_sharing_other_roms_using_shared_data)
             val roms = romsUsingSharedData.joinToString(", ")
             message.append(String.format(fmt, roms))

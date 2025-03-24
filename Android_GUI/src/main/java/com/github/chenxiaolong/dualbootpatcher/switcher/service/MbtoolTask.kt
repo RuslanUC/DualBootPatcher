@@ -241,6 +241,7 @@ class MbtoolTask(
         when (params.action) {
             BackupRestoreParams.Action.BACKUP -> printBoldText(Color.MAGENTA, "Backup:\n")
             BackupRestoreParams.Action.RESTORE -> printBoldText(Color.MAGENTA, "Restore:\n")
+            null -> TODO()
         }
 
         printBoldText(Color.MAGENTA, "- ROM ID: ${params.romId}\n")

@@ -72,9 +72,7 @@ object AnsiStuff {
     fun format(text: String, fg: EnumSet<Color>?, bg: EnumSet<Color>?,
                attrs: EnumSet<Attribute>?): String {
         // Trivial case
-        if ((fg == null || fg.isEmpty())
-                && (bg == null || bg.isEmpty())
-                && (attrs == null || attrs.isEmpty())) {
+        if (fg.isNullOrEmpty() && bg.isNullOrEmpty() && attrs.isNullOrEmpty()) {
             return text
         }
 
@@ -84,7 +82,7 @@ object AnsiStuff {
 
         var first = true
 
-        if (fg != null && !fg.isEmpty()) {
+        if (!fg.isNullOrEmpty()) {
             for (color in fg) {
                 if (!first) {
                     sb.append(';')
@@ -93,7 +91,7 @@ object AnsiStuff {
                 sb.append(fgColorMap[color])
             }
         }
-        if (bg != null && !bg.isEmpty()) {
+        if (!bg.isNullOrEmpty()) {
             for (color in bg) {
                 if (!first) {
                     sb.append(';')
@@ -102,7 +100,7 @@ object AnsiStuff {
                 sb.append(bgColorMap[color])
             }
         }
-        if (attrs != null && !attrs.isEmpty()) {
+        if (!attrs.isNullOrEmpty()) {
             for (attr in attrs) {
                 if (!first) {
                     sb.append(';')

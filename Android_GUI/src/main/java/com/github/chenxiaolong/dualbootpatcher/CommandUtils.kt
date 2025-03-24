@@ -37,8 +37,8 @@ object CommandUtils {
     }
 
     private class RootCommandResult {
-        internal var exitCode: Int = 0
-        internal var terminationMessage: String? = null
+        var exitCode: Int = 0
+        var terminationMessage: String? = null
     }
 
     class RootExecutionException : Exception {
@@ -49,7 +49,7 @@ object CommandUtils {
         constructor(cause: Throwable) : super(cause)
     }
 
-    @Throws(CommandUtils.RootExecutionException::class, RootDeniedException::class)
+    @Throws(RootExecutionException::class, RootDeniedException::class)
     fun runRootCommand(listener: RootOutputListener?, commandStr: String): Int {
         synchronized(LOCK) {
             val result = RootCommandResult()
@@ -112,22 +112,22 @@ object CommandUtils {
         }
     }
 
-    @Throws(RootDeniedException::class, CommandUtils.RootExecutionException::class)
+    @Throws(RootDeniedException::class, RootExecutionException::class)
     fun runRootCommand(listener: RootOutputListener?, vararg commandArgs: String): Int {
         return runRootCommand(listener, shellQuote(*commandArgs))
     }
 
-    @Throws(RootDeniedException::class, CommandUtils.RootExecutionException::class)
+    @Throws(RootDeniedException::class, RootExecutionException::class)
     fun runRootCommand(commandStr: String): Int {
         return runRootCommand(null, commandStr)
     }
 
-    @Throws(RootDeniedException::class, CommandUtils.RootExecutionException::class)
+    @Throws(RootDeniedException::class, RootExecutionException::class)
     fun runRootCommand(vararg commandArgs: String): Int {
         return runRootCommand(null, *commandArgs)
     }
 
-    fun shellQuote(vararg args: String): String {
+    private fun shellQuote(vararg args: String): String {
         val command = StringBuilder()
         for (i in args.indices) {
             if (i > 0) {
@@ -138,7 +138,7 @@ object CommandUtils {
         return command.toString()
     }
 
-    fun shellQuote(text: String): String {
+    private fun shellQuote(text: String): String {
         return "'${text.replace("'", "'\"'\"'")}'"
     }
 }

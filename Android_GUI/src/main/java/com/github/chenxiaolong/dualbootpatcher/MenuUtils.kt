@@ -20,15 +20,17 @@ package com.github.chenxiaolong.dualbootpatcher
 import androidx.core.graphics.drawable.DrawableCompat
 import android.view.Menu
 import android.view.MenuItem
+import androidx.core.view.size
+import androidx.core.view.get
 
 object MenuUtils {
     fun tintAllMenuIcons(menu: Menu, color: Int) {
-        (0 until menu.size())
-                .map { menu.getItem(it) }
+        (0 until menu.size)
+                .map { menu[it] }
                 .forEach { tintMenuItemIcon(it, color) }
     }
 
-    fun tintMenuItemIcon(item: MenuItem, color: Int) {
+    private fun tintMenuItemIcon(item: MenuItem, color: Int) {
         val drawable = item.icon
         if (drawable != null) {
             val wrapped = DrawableCompat.wrap(drawable)

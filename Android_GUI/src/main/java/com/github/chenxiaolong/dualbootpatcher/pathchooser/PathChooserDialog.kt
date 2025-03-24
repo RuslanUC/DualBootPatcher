@@ -83,8 +83,8 @@ class PathChooserDialog : DialogFragment(), PathChooserItemClickListener,
         dialogTag = args.getString(ARG_TAG)!!
 
         comparator = when (builder.type) {
-            PathChooserDialog.Type.OPEN_DIRECTORY -> DIRECTORY_COMPARATOR
-            PathChooserDialog.Type.OPEN_FILE, PathChooserDialog.Type.SAVE_FILE -> PATH_COMPARATOR
+            Type.OPEN_DIRECTORY -> DIRECTORY_COMPARATOR
+            Type.OPEN_FILE, Type.SAVE_FILE -> PATH_COMPARATOR
         }
 
         cwd = if (savedInstanceState != null) {
@@ -151,9 +151,9 @@ class PathChooserDialog : DialogFragment(), PathChooserItemClickListener,
         var selectedPath = cwd
 
         if (hasParent && position == 0) {
-            selectedPath = selectedPath.parentFile
+            selectedPath = selectedPath.parentFile!!
             if (EMULATED_STORAGE_DIR == selectedPath.absolutePath) {
-                selectedPath = selectedPath.parentFile
+                selectedPath = selectedPath.parentFile!!
             }
         } else {
             selectedPath = contents[if (hasParent) position - 1 else position]
@@ -164,12 +164,12 @@ class PathChooserDialog : DialogFragment(), PathChooserItemClickListener,
 
         if (selectedPath.isFile) {
             when (builder.type) {
-                PathChooserDialog.Type.OPEN_FILE -> {
+                Type.OPEN_FILE -> {
                     owner.onPathSelected(dialogTag, selectedPath)
                     dismiss()
                 }
-                PathChooserDialog.Type.SAVE_FILE -> editText.setText(selectedPath.name)
-                PathChooserDialog.Type.OPEN_DIRECTORY -> throw IllegalStateException()
+                Type.SAVE_FILE -> editText.setText(selectedPath.name)
+                Type.OPEN_DIRECTORY -> throw IllegalStateException()
             }
         } else {
             cwd = selectedPath
@@ -233,7 +233,7 @@ class PathChooserDialog : DialogFragment(), PathChooserItemClickListener,
     }
 
     private class NameValidationTextWatcher
-    internal constructor(private val dialog: MaterialDialog) : TextWatcher {
+    constructor(private val dialog: MaterialDialog) : TextWatcher {
         override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
 
         override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
