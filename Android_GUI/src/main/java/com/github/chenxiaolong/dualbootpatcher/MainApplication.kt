@@ -20,16 +20,10 @@ package com.github.chenxiaolong.dualbootpatcher
 import android.app.Application
 import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
-import leakcanary.AppWatcher
-import leakcanary.LeakCanaryProcess
 
 class MainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-
-        if (LeakCanaryProcess.isInAnalyzerProcess(this)) {
-            return
-        }
 
         val defaultUEH = Thread.getDefaultUncaughtExceptionHandler()
 
@@ -39,8 +33,6 @@ class MainApplication : Application() {
 
             defaultUEH?.uncaughtException(thread, throwable)
         }
-
-        AppWatcher.manualInstall(this)
 
         val prefs = getSharedPreferences("settings", 0)
         useDarkTheme = prefs.getBoolean("use_dark_theme", false)

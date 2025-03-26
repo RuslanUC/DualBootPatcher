@@ -129,3 +129,46 @@ if(variants AND MBP_ENABLE_TESTS)
     # Add to ctest
     add_gtest_test(mbutil_tests)
 endif()
+
+if(${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    add_library(
+            mbutil
+            STATIC
+            src/archive.cpp
+            src/blkid.cpp
+            src/chmod.cpp
+            src/chown.cpp
+            src/cmdline.cpp
+            src/command.cpp
+            src/copy.cpp
+            src/delete.cpp
+            src/directory.cpp
+            src/file.cpp
+            src/fstab.cpp
+            src/fts.cpp
+            src/hash.cpp
+            src/loopdev.cpp
+            src/mount.cpp
+            src/path.cpp
+            src/process.cpp
+            src/properties.cpp
+            src/reboot.cpp
+            src/selinux.cpp
+            src/socket.cpp
+            src/string.cpp
+            src/time.cpp
+            src/vibrate.cpp
+            src/external/system_properties.cpp
+            src/external/system_properties_compat.cpp
+            src/result/file_op_result.cpp
+    )
+
+    # Includes
+    target_include_directories(
+            mbutil
+            PUBLIC include
+            PRIVATE .
+            ${CMAKE_SOURCE_DIR}/libmbcommon/include
+            ${CMAKE_SOURCE_DIR}/external/outcome/include
+    )
+endif()

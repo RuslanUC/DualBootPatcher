@@ -93,10 +93,12 @@ protected:
     std::string _boot_block_dev;
     std::string _recovery_block_dev;
     std::string _system_block_dev;
+    std::string _vendor_block_dev;
     std::shared_ptr<Rom> _rom;
     std::string _system_path;
     std::string _cache_path;
     std::string _data_path;
+    std::string _vendor_path;
 
     std::unordered_map<std::string, std::string> _prop;
     std::unordered_map<std::string, std::string> _chroot_prop;
@@ -148,6 +150,8 @@ private:
     bool updater_fd_reader(int stdio_fd, int command_fd);
     bool run_real_updater();
     bool run_debug_shell();
+
+    bool find_block_dev(const std::vector<std::string>& devs, const std::string& name, std::string& out, const bool missing_ok);
 
     ProceedState install_stage_initialize();
     ProceedState install_stage_create_chroot();

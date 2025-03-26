@@ -103,16 +103,16 @@ static bool v3_send_response_unsupported(int fd)
 
 static bool v3_file_chmod(int fd, const v3::Request *msg)
 {
-    auto request = static_cast<const v3::FileChmodRequest *>(msg->request());
+    const auto request = static_cast<const v3::FileChmodRequest *>(msg->request());
     if (fd_map.find(request->id()) == fd_map.end()) {
         return v3_send_response_invalid(fd);
     }
 
-    int ffd = fd_map[request->id()];
+    const int ffd = fd_map[request->id()];
 
     // Don't allow setting setuid or setgid permissions
-    mode_t mode = static_cast<mode_t>(request->mode());
-    mode_t masked = mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+    const mode_t mode = request->mode();
+    const mode_t masked = mode & (S_IRWXU | S_IRWXG | S_IRWXO);
     if (masked != mode) {
         return v3_send_response_invalid(fd);
     }
@@ -120,15 +120,15 @@ static bool v3_file_chmod(int fd, const v3::Request *msg)
     fb::FlatBufferBuilder builder;
     fb::Offset<v3::FileChmodError> error;
 
-    bool ret = fchmod(ffd, mode) == 0;
-    int saved_errno = errno;
+    const bool ret = fchmod(ffd, mode) == 0;
+    const int saved_errno = errno;
 
     if (!ret) {
         error = v3::CreateFileChmodErrorDirect(
                 builder, saved_errno, strerror(saved_errno));
     }
 
-    auto response = v3::CreateFileChmodResponseDirect(
+    const auto response = v3::CreateFileChmodResponseDirect(
             builder, ret, ret ? nullptr : strerror(saved_errno), error);
 
     // Wrap response
@@ -140,28 +140,28 @@ static bool v3_file_chmod(int fd, const v3::Request *msg)
 
 static bool v3_file_close(int fd, const v3::Request *msg)
 {
-    auto request = static_cast<const v3::FileCloseRequest *>(msg->request());
-    auto it = fd_map.find(request->id());
+    const auto request = static_cast<const v3::FileCloseRequest *>(msg->request());
+    const auto it = fd_map.find(request->id());
     if (it == fd_map.end()) {
         return v3_send_response_invalid(fd);
     }
 
     // Remove ID from map
-    int ffd = it->second;
+    const int ffd = it->second;
     fd_map.erase(it);
 
     fb::FlatBufferBuilder builder;
     fb::Offset<v3::FileCloseError> error;
 
-    bool ret = close(ffd) == 0;
-    int saved_errno = errno;
+    const bool ret = close(ffd) == 0;
+    const int saved_errno = errno;
 
     if (!ret) {
         error = v3::CreateFileCloseErrorDirect(
                 builder, saved_errno, strerror(saved_errno));
     }
 
-    auto response = v3::CreateFileCloseResponseDirect(
+    const auto response = v3::CreateFileCloseResponseDirect(
             builder, ret, ret ? nullptr : strerror(saved_errno), error);
 
     // Wrap response
@@ -173,7 +173,7 @@ static bool v3_file_close(int fd, const v3::Request *msg)
 
 static bool v3_file_open(int fd, const v3::Request *msg)
 {
-    auto request = static_cast<const v3::FileOpenRequest *>(msg->request());
+    const auto request = static_cast<const v3::FileOpenRequest *>(msg->request());
     if (!request->path()) {
         return v3_send_response_invalid(fd);
     }
@@ -181,7 +181,7 @@ static bool v3_file_open(int fd, const v3::Request *msg)
     int flags = O_CLOEXEC;
 
     if (request->flags()) {
-        for (short openflag : *request->flags()) {
+        for (const short openflag : *request->flags()) {
             if (openflag == v3::FileOpenFlag_APPEND) {
                 flags |= O_APPEND;
             } else if (openflag == v3::FileOpenFlag_CREAT) {
@@ -204,9 +204,8 @@ static bool v3_file_open(int fd, const v3::Request *msg)
     fb::Offset<v3::FileOpenError> error;
     int id = -1;
 
-    int ffd = open(request->path()->c_str(), flags,
-                   static_cast<mode_t>(request->perms()));
-    int saved_errno = errno;
+    const int ffd = open(request->path()->c_str(), flags, request->perms());
+    const int saved_errno = errno;
 
     if (ffd >= 0) {
         // Assign a new ID
@@ -217,7 +216,7 @@ static bool v3_file_open(int fd, const v3::Request *msg)
                 builder, saved_errno, strerror(saved_errno));
     }
 
-    auto response = v3::CreateFileOpenResponseDirect(
+    const auto response = v3::CreateFileOpenResponseDirect(
             builder, ffd >= 0, ffd >= 0 ? nullptr : strerror(saved_errno), id,
             error);
 
@@ -230,22 +229,22 @@ static bool v3_file_open(int fd, const v3::Request *msg)
 
 static bool v3_file_read(int fd, const v3::Request *msg)
 {
-    auto request = static_cast<const v3::FileReadRequest *>(msg->request());
-    auto it = fd_map.find(request->id());
+    const auto request = static_cast<const v3::FileReadRequest *>(msg->request());
+    const auto it = fd_map.find(request->id());
     if (it == fd_map.end()) {
         return v3_send_response_invalid(fd);
     }
 
-    int ffd = it->second;
+    const int ffd = it->second;
 
-    std::vector<unsigned char> buf(static_cast<size_t>(request->count()));
+    std::vector<unsigned char> buf((request->count()));
 
     fb::FlatBufferBuilder builder;
     fb::Offset<v3::FileReadError> error;
     fb::Offset<fb::Vector<unsigned char>> data;
 
-    ssize_t ret = read(ffd, buf.data(), buf.size());
-    int saved_errno = errno;
+    const ssize_t ret = read(ffd, buf.data(), buf.size());
+    const int saved_errno = errno;
 
     if (ret >= 0) {
         data = builder.CreateVector(buf.data(), static_cast<size_t>(ret));
@@ -254,7 +253,7 @@ static bool v3_file_read(int fd, const v3::Request *msg)
                 builder, saved_errno, strerror(saved_errno));
     }
 
-    auto response = v3::CreateFileReadResponse(
+    const auto response = v3::CreateFileReadResponse(
             builder, ret >= 0,
             ret >= 0 ? 0 : builder.CreateString(strerror(saved_errno)),
             static_cast<size_t>(ret), data, error);
@@ -268,14 +267,14 @@ static bool v3_file_read(int fd, const v3::Request *msg)
 
 static bool v3_file_seek(int fd, const v3::Request *msg)
 {
-    auto request = static_cast<const v3::FileSeekRequest *>(msg->request());
-    auto it = fd_map.find(request->id());
+    const auto request = static_cast<const v3::FileSeekRequest *>(msg->request());
+    const auto it = fd_map.find(request->id());
     if (it == fd_map.end()) {
         return v3_send_response_invalid(fd);
     }
 
-    int ffd = it->second;
-    int64_t offset = request->offset();
+    const int ffd = it->second;
+    const int64_t offset = request->offset();
     int whence;
 
     if (request->whence() == v3::FileSeekWhence_SEEK_SET) {
@@ -293,16 +292,16 @@ static bool v3_file_seek(int fd, const v3::Request *msg)
 
     // Ahh, posix...
     errno = 0;
-    off64_t new_offset = lseek64(ffd, offset, whence);
-    int saved_errno = errno;
-    bool ret = new_offset >= 0 && saved_errno == 0;
+    const off64_t new_offset = lseek64(ffd, offset, whence);
+    const int saved_errno = errno;
+    const bool ret = new_offset >= 0 && saved_errno == 0;
 
     if (!ret) {
         error = v3::CreateFileSeekErrorDirect(
                 builder, saved_errno, strerror(saved_errno));
     }
 
-    auto response = v3::CreateFileSeekResponseDirect(
+    const auto response = v3::CreateFileSeekResponseDirect(
             builder, ret, ret ? nullptr : strerror(saved_errno), new_offset,
             error);
 
@@ -468,7 +467,7 @@ static bool v3_path_chmod(int fd, const v3::Request *msg)
     }
 
     // Don't allow setting setuid or setgid permissions
-    mode_t mode = static_cast<mode_t>(request->mode());
+    mode_t mode = request->mode();
     mode_t masked = mode & (S_IRWXU | S_IRWXG | S_IRWXO);
     if (masked != mode) {
         return v3_send_response_invalid(fd);
@@ -1024,15 +1023,17 @@ static bool v3_mb_get_installed_roms(int fd, const v3::Request *msg)
 
     std::vector<fb::Offset<v3::MbRom>> fb_roms;
 
-    for (auto r : roms.roms) {
+    for (const auto& r : roms.roms) {
         std::string system_path = r->full_system_path();
         std::string cache_path = r->full_cache_path();
         std::string data_path = r->full_data_path();
+        std::string vendor_path = r->full_vendor_path();
 
         auto fb_id = builder.CreateString(r->id);
         auto fb_system_path = builder.CreateString(system_path);
         auto fb_cache_path = builder.CreateString(cache_path);
         auto fb_data_path = builder.CreateString(data_path);
+        auto fb_vendor_path = builder.CreateString(vendor_path);
         fb::Offset<fb::String> fb_version;
         fb::Offset<fb::String> fb_build;
 
@@ -1057,8 +1058,7 @@ static bool v3_mb_get_installed_roms(int fd, const v3::Request *msg)
         config.load_file(r->config_path());
         auto &props = config.cached_props;
 
-        util::property_file_iter(build_prop, {}, [&](std::string_view key,
-                                                     std::string_view value) {
+        util::property_file_iter(build_prop, {}, [&](std::string_view key, std::string_view value) {
             for (auto const &item : needed_props) {
                 if (item.key == key) {
                     props.insert_or_assign(std::string(key), std::string(value));
@@ -1079,6 +1079,7 @@ static bool v3_mb_get_installed_roms(int fd, const v3::Request *msg)
         mrb.add_system_path(fb_system_path);
         mrb.add_cache_path(fb_cache_path);
         mrb.add_data_path(fb_data_path);
+        mrb.add_vendor_path(fb_vendor_path);
         mrb.add_version(fb_version);
         mrb.add_build(fb_build);
         auto fb_rom = mrb.Finish();
@@ -1299,10 +1300,10 @@ static bool v3_mb_get_packages_count(int fd, const v3::Request *msg)
     unsigned int other_pkgs = 0;
 
     Packages pkgs;
-    bool ret = pkgs.load_xml(packages_xml);
+    const bool ret = pkgs.load_xml(packages_xml);
 
     if (ret) {
-        for (std::shared_ptr<Package> pkg : pkgs.pkgs) {
+        for (const std::shared_ptr<Package>& pkg : pkgs.pkgs) {
             bool is_system = (pkg->pkg_flags & Package::Flag::SYSTEM)
                     || (pkg->pkg_public_flags & Package::PublicFlag::SYSTEM);
             bool is_update = (pkg->pkg_flags & Package::Flag::UPDATED_SYSTEM_APP)

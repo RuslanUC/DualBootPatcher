@@ -207,3 +207,34 @@ target_compile_definitions(
     INTERFACE
     -DMBCOMMON_BUILD
 )
+
+if(${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    add_library(
+            mbcommon
+            STATIC
+            src/capi/util.cpp
+            src/common.cpp
+            src/error.cpp
+            src/error_code.cpp
+            src/file/fd.cpp
+            src/file/memory.cpp
+            src/file/open_mode.cpp
+            src/file/posix.cpp
+            src/file/standard.cpp
+            src/file.cpp
+            src/file_error.cpp
+            src/file_util.cpp
+            src/locale.cpp
+            src/string.cpp
+            ${CMAKE_CURRENT_BINARY_DIR}/gen/version.cpp
+            src/external/iconv.cpp
+            src/file/win32.cpp
+    )
+
+    target_include_directories(
+            mbcommon
+            PUBLIC
+            include
+            ${CMAKE_SOURCE_DIR}/external/outcome/include
+    )
+endif()

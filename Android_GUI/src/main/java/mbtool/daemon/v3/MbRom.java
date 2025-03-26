@@ -26,23 +26,28 @@ public final class MbRom extends Table {
   public String dataPath() { int o = __offset(10); return o != 0 ? __string(o + bb_pos) : null; }
   public ByteBuffer dataPathAsByteBuffer() { return __vector_as_bytebuffer(10, 1); }
   public ByteBuffer dataPathInByteBuffer(ByteBuffer _bb) { return __vector_in_bytebuffer(_bb, 10, 1); }
-  public String version() { int o = __offset(12); return o != 0 ? __string(o + bb_pos) : null; }
-  public ByteBuffer versionAsByteBuffer() { return __vector_as_bytebuffer(12, 1); }
-  public ByteBuffer versionInByteBuffer(ByteBuffer _bb) { return __vector_in_bytebuffer(_bb, 12, 1); }
-  public String build() { int o = __offset(14); return o != 0 ? __string(o + bb_pos) : null; }
-  public ByteBuffer buildAsByteBuffer() { return __vector_as_bytebuffer(14, 1); }
-  public ByteBuffer buildInByteBuffer(ByteBuffer _bb) { return __vector_in_bytebuffer(_bb, 14, 1); }
+  public String vendorPath() { int o = __offset(12); return o != 0 ? __string(o + bb_pos) : null; }
+  public ByteBuffer vendorPathAsByteBuffer() { return __vector_as_bytebuffer(12, 1); }
+  public ByteBuffer vendorPathInByteBuffer(ByteBuffer _bb) { return __vector_in_bytebuffer(_bb, 12, 1); }
+  public String version() { int o = __offset(14); return o != 0 ? __string(o + bb_pos) : null; }
+  public ByteBuffer versionAsByteBuffer() { return __vector_as_bytebuffer(14, 1); }
+  public ByteBuffer versionInByteBuffer(ByteBuffer _bb) { return __vector_in_bytebuffer(_bb, 14, 1); }
+  public String build() { int o = __offset(16); return o != 0 ? __string(o + bb_pos) : null; }
+  public ByteBuffer buildAsByteBuffer() { return __vector_as_bytebuffer(16, 1); }
+  public ByteBuffer buildInByteBuffer(ByteBuffer _bb) { return __vector_in_bytebuffer(_bb, 16, 1); }
 
   public static int createMbRom(FlatBufferBuilder builder,
       int idOffset,
       int system_pathOffset,
       int cache_pathOffset,
       int data_pathOffset,
+      int vendor_pathOffset,
       int versionOffset,
       int buildOffset) {
-    builder.startObject(6);
+    builder.startObject(7);
     MbRom.addBuild(builder, buildOffset);
     MbRom.addVersion(builder, versionOffset);
+    MbRom.addVendorPath(builder, vendor_pathOffset);
     MbRom.addDataPath(builder, data_pathOffset);
     MbRom.addCachePath(builder, cache_pathOffset);
     MbRom.addSystemPath(builder, system_pathOffset);
@@ -50,13 +55,14 @@ public final class MbRom extends Table {
     return MbRom.endMbRom(builder);
   }
 
-  public static void startMbRom(FlatBufferBuilder builder) { builder.startObject(6); }
+  public static void startMbRom(FlatBufferBuilder builder) { builder.startObject(7); }
   public static void addId(FlatBufferBuilder builder, int idOffset) { builder.addOffset(0, idOffset, 0); }
   public static void addSystemPath(FlatBufferBuilder builder, int systemPathOffset) { builder.addOffset(1, systemPathOffset, 0); }
   public static void addCachePath(FlatBufferBuilder builder, int cachePathOffset) { builder.addOffset(2, cachePathOffset, 0); }
   public static void addDataPath(FlatBufferBuilder builder, int dataPathOffset) { builder.addOffset(3, dataPathOffset, 0); }
-  public static void addVersion(FlatBufferBuilder builder, int versionOffset) { builder.addOffset(4, versionOffset, 0); }
-  public static void addBuild(FlatBufferBuilder builder, int buildOffset) { builder.addOffset(5, buildOffset, 0); }
+  public static void addVendorPath(FlatBufferBuilder builder, int vendorPathOffset) { builder.addOffset(4, vendorPathOffset, 0); }
+  public static void addVersion(FlatBufferBuilder builder, int versionOffset) { builder.addOffset(5, versionOffset, 0); }
+  public static void addBuild(FlatBufferBuilder builder, int buildOffset) { builder.addOffset(6, buildOffset, 0); }
   public static int endMbRom(FlatBufferBuilder builder) {
     int o = builder.endObject();
     return o;

@@ -65,7 +65,8 @@ enum class BackupTarget : uint8_t
     Data    = 1 << 2,
     Boot    = 1 << 3,
     Config  = 1 << 4,
-    All     = (1 << 5) - 1,
+    Vendor  = 1 << 5,
+    All     = (1 << 6) - 1,
 };
 MB_DECLARE_FLAGS(BackupTargets, BackupTarget)
 MB_DECLARE_OPERATORS_FOR_FLAGS(BackupTargets)
@@ -75,6 +76,7 @@ constexpr char BACKUP_MNT_DIR[]            = "/mb_mnt";
 constexpr char BACKUP_NAME_PREFIX_SYSTEM[] = "system";
 constexpr char BACKUP_NAME_PREFIX_CACHE[]  = "cache";
 constexpr char BACKUP_NAME_PREFIX_DATA[]   = "data";
+constexpr char BACKUP_NAME_PREFIX_VENDOR[] = "vendor";
 constexpr char BACKUP_NAME_BOOT_IMAGE[]    = "boot.img";
 constexpr char BACKUP_NAME_CONFIG[]        = "config.json";
 constexpr char BACKUP_NAME_THUMBNAIL[]     = "thumbnail.webp";
@@ -614,6 +616,7 @@ static bool backup_rom(const std::shared_ptr<Rom> &rom,
     const std::string system_path(rom->full_system_path());
     const std::string cache_path(rom->full_cache_path());
     const std::string data_path(rom->full_data_path());
+    const std::string vendor_path(rom->full_vendor_path());
     const std::string boot_image_path(rom->boot_image_path());
     const std::string config_path(rom->config_path());
     const std::string thumbnail_path(rom->thumbnail_path());
@@ -630,6 +633,9 @@ static bool backup_rom(const std::shared_ptr<Rom> &rom,
     if (targets & BackupTarget::Data) {
         LOGI("  - Data: %s", data_path.c_str());
     }
+    if (targets & BackupTarget::Vendor) {
+        LOGI("  - Vendor: %s", vendor_path.c_str());
+    }
     if (targets & BackupTarget::Boot) {
         LOGI("  - Boot image: %s", boot_image_path.c_str());
     }
@@ -639,22 +645,18 @@ static bool backup_rom(const std::shared_ptr<Rom> &rom,
     }
     LOGI("- Backup directory: %s", output_dir.c_str());
 
-    std::string output_system = get_compressed_backup_name(
-            BACKUP_NAME_PREFIX_SYSTEM, compression);
-    std::string output_cache = get_compressed_backup_name(
-            BACKUP_NAME_PREFIX_CACHE, compression);
-    std::string output_data = get_compressed_backup_name(
-            BACKUP_NAME_PREFIX_DATA, compression);
+    const std::string output_system = get_compressed_backup_name(BACKUP_NAME_PREFIX_SYSTEM, compression);
+    const std::string output_cache = get_compressed_backup_name(BACKUP_NAME_PREFIX_CACHE, compression);
+    const std::string output_data = get_compressed_backup_name(BACKUP_NAME_PREFIX_DATA, compression);
+    const std::string output_vendor = get_compressed_backup_name(BACKUP_NAME_PREFIX_VENDOR, compression);
 
     // Backup boot image
-    if (targets & BackupTarget::Boot
-            && backup_boot_image(rom, output_dir) == Result::Failed) {
+    if (targets & BackupTarget::Boot && backup_boot_image(rom, output_dir) == Result::Failed) {
         return false;
     }
 
     // Backup configs
-    if (targets & BackupTarget::Config
-            && backup_configs(rom, output_dir) == Result::Failed) {
+    if (targets & BackupTarget::Config && backup_configs(rom, output_dir) == Result::Failed) {
         return false;
     }
 
@@ -691,6 +693,17 @@ static bool backup_rom(const std::shared_ptr<Rom> &rom,
         }
     }
 
+    // Backup vendor
+    if (targets & BackupTarget::Vendor) {
+        Result ret = backup_partition(
+                vendor_path, output_dir, output_vendor,
+                rom->vendor_is_image, { "multiboot" }, compression,
+                split_archive_size);
+        if (ret == Result::Failed) {
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -705,6 +718,7 @@ static bool restore_rom(const std::shared_ptr<Rom> &rom,
     const std::string system_path(rom->full_system_path());
     const std::string cache_path(rom->full_cache_path());
     const std::string data_path(rom->full_data_path());
+    const std::string vendor_path(rom->full_vendor_path());
     const std::string boot_image_path(rom->boot_image_path());
     const std::string config_path(rom->config_path());
     const std::string thumbnail_path(rom->thumbnail_path());
@@ -720,6 +734,9 @@ static bool restore_rom(const std::shared_ptr<Rom> &rom,
     }
     if (targets & BackupTarget::Data) {
         LOGI("  - Data: %s", data_path.c_str());
+    }
+    if (targets & BackupTarget::Vendor) {
+        LOGI("  - Vendor: %s", data_path.c_str());
     }
     if (targets & BackupTarget::Boot) {
         LOGI("  - Boot image: %s", boot_image_path.c_str());
@@ -815,6 +832,31 @@ static bool restore_rom(const std::shared_ptr<Rom> &rom,
         Result ret = restore_partition(
                 data_path, input_dir, path, rom->data_is_image,
                 DEFAULT_IMAGE_SIZE, { "media" }, compression, is_split);
+        if (ret == Result::Failed) {
+            return false;
+        }
+    }
+
+    // Restore vendor
+    if (targets & BackupTarget::Vendor) {
+        auto image_size = util::mount_get_total_size(Roms::get_vendor_partition());
+        if (!image_size) {
+            LOGE("Failed to get the size of the vendor partition");
+            return false;
+        }
+
+        util::CompressionType compression;
+        bool is_split;
+
+        std::string path = find_compressed_backup(input_dir, BACKUP_NAME_PREFIX_SYSTEM, compression, is_split);
+        if (path.empty()) {
+            LOGE("Backup of /vendor not found");
+            return false;
+        }
+
+        Result ret = restore_partition(
+                vendor_path, input_dir, path, rom->vendor_is_image,
+                image_size.value(), {}, compression, is_split);
         if (ret == Result::Failed) {
             return false;
         }

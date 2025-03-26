@@ -72,6 +72,9 @@ SETTER(char const * const *, cache_block_devs);
 GETTER(char * const *, data_block_devs);
 SETTER(char const * const *, data_block_devs);
 
+GETTER(char * const *, vendor_block_devs);
+SETTER(char const * const *, vendor_block_devs);
+
 GETTER(char * const *, boot_block_devs);
 SETTER(char const * const *, boot_block_devs);
 

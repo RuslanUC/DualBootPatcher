@@ -48,7 +48,8 @@ static std::vector<std::string> extsd_mount_points{
     "/storage/sdcard1",
     "/storage/extSdCard",
     "/storage/external_SD",
-    "/storage/MicroSD"
+    "/storage/MicroSD",
+    "/raw/extsd.manual",
 };
 
 namespace mb
@@ -83,6 +84,15 @@ std::string Rom::full_data_path()
     return path;
 }
 
+std::string Rom::full_vendor_path() {
+    std::string path = Roms::get_mountpoint(vendor_source);
+    if (!path.empty()) {
+        path += vendor_path;
+    }
+    return path;
+}
+
+
 std::string Rom::boot_image_path()
 {
     return get_raw_path(format(MULTIBOOT_DIR "/%s/boot.img", id.c_str()));
@@ -105,12 +115,15 @@ std::shared_ptr<Rom> Roms::create_rom_primary()
     rom->system_source = Rom::Source::System;
     rom->cache_source = Rom::Source::Cache;
     rom->data_source = Rom::Source::Data;
+    rom->vendor_source = Rom::Source::Vendor;
     rom->system_path = std::string();
     rom->cache_path = std::string();
     rom->data_path = std::string();
+    rom->vendor_path = std::string();
     rom->system_is_image = false;
     rom->cache_is_image = false;
     rom->data_is_image = false;
+    rom->vendor_is_image = false;
     return rom;
 }
 
@@ -121,12 +134,15 @@ std::shared_ptr<Rom> Roms::create_rom_dual()
     rom->system_source = Rom::Source::System;
     rom->cache_source = Rom::Source::Cache;
     rom->data_source = Rom::Source::Data;
+    rom->vendor_source = Rom::Source::Data;
     rom->system_path = "/multiboot/dual/system";
     rom->cache_path = "/multiboot/dual/cache";
     rom->data_path = "/multiboot/dual/data";
+    rom->vendor_path = "/multiboot/dual/vendor";
     rom->system_is_image = false;
     rom->cache_is_image = false;
     rom->data_is_image = false;
+    rom->vendor_is_image = false;
     return rom;
 }
 
@@ -140,12 +156,15 @@ std::shared_ptr<Rom> Roms::create_rom_multi_slot(unsigned int num)
     rom->system_source = Rom::Source::Cache;
     rom->cache_source = Rom::Source::System;
     rom->data_source = Rom::Source::Data;
+    rom->vendor_source = Rom::Source::Data;
     rom->system_path.append("/multiboot/").append(rom->id).append("/system");
     rom->cache_path.append("/multiboot/").append(rom->id).append("/cache");
     rom->data_path.append("/multiboot/").append(rom->id).append("/data");
+    rom->vendor_path.append("/multiboot/").append(rom->id).append("/vendor");
     rom->system_is_image = false;
     rom->cache_is_image = false;
     rom->data_is_image = false;
+    rom->vendor_is_image = false;
     return rom;
 }
 
@@ -156,12 +175,15 @@ std::shared_ptr<Rom> Roms::create_rom_data_slot(const std::string &id)
     rom->system_source = Rom::Source::Data;
     rom->cache_source = Rom::Source::Cache;
     rom->data_source = Rom::Source::Data;
+    rom->vendor_source = Rom::Source::Data;
     rom->system_path.append("/multiboot/").append(rom->id).append("/system");
     rom->cache_path.append("/multiboot/").append(rom->id).append("/cache");
     rom->data_path.append("/multiboot/").append(rom->id).append("/data");
+    rom->vendor_path.append("/multiboot/").append(rom->id).append("/vendor");
     rom->system_is_image = false;
     rom->cache_is_image = false;
     rom->data_is_image = false;
+    rom->vendor_is_image = false;
     return rom;
 }
 
@@ -172,12 +194,15 @@ std::shared_ptr<Rom> Roms::create_rom_extsd_slot(const std::string &id)
     rom->system_source = Rom::Source::ExternalSd;
     rom->cache_source = Rom::Source::Cache;
     rom->data_source = Rom::Source::Data;
+    rom->vendor_source = Rom::Source::ExternalSd;
     rom->system_path.append("/multiboot/").append(rom->id).append("/system.img");
     rom->cache_path.append("/multiboot/").append(rom->id).append("/cache");
     rom->data_path.append("/multiboot/").append(rom->id).append("/data");
+    rom->vendor_path.append("/multiboot/").append(rom->id).append("/vendor.img");
     rom->system_is_image = true;
     rom->cache_is_image = false;
     rom->data_is_image = false;
+    rom->vendor_is_image = true;
     return rom;
 }
 
@@ -187,12 +212,15 @@ std::shared_ptr<Rom> Roms::create_rom_fullextsd_slot(const std::string& id) {
     rom->system_source = Rom::Source::ExternalSd;
     rom->cache_source = Rom::Source::ExternalSd;
     rom->data_source = Rom::Source::ExternalSd;
+    rom->vendor_source = Rom::Source::ExternalSd;
     rom->system_path.append("/multiboot/").append(rom->id).append("/system.img");
     rom->cache_path.append("/multiboot/").append(rom->id).append("/cache.img");
     rom->data_path.append("/multiboot/").append(rom->id).append("/data.img");
+    rom->vendor_path.append("/multiboot/").append(rom->id).append("/vendor.img");
     rom->system_is_image = true;
     rom->cache_is_image = true;
     rom->data_is_image = true;
+    rom->vendor_is_image = true;
     return rom;
 }
 
@@ -213,7 +241,7 @@ static bool cmp_rom_id(const std::shared_ptr<Rom> &a,
 
 void Roms::add_data_roms()
 {
-    std::string system = get_raw_path("/data/multiboot");
+    const std::string system = get_raw_path("/data/multiboot");
 
     DIR *dp = opendir(system.c_str());
     if (!dp ) {
@@ -228,7 +256,7 @@ void Roms::add_data_roms()
 
     std::vector<std::shared_ptr<Rom>> temp_roms;
 
-    struct dirent *ent;
+    dirent *ent;
     while ((ent = readdir(dp))) {
         if (strcmp(ent->d_name, "data-slot-") == 0
                 || !starts_with(ent->d_name, "data-slot-")) {
@@ -251,7 +279,7 @@ void Roms::add_data_roms()
 
 void Roms::add_extsd_roms()
 {
-    std::string mount_point = get_extsd_partition();
+    const std::string mount_point = get_extsd_partition();
     std::string search_dir;
     bool is_boot;
 
@@ -277,11 +305,12 @@ void Roms::add_extsd_roms()
 
     std::vector<std::shared_ptr<Rom>> temp_roms;
 
-    struct dirent *ent;
+    dirent *ent;
     while ((ent = readdir(dp))) {
         if (strcmp(ent->d_name, "extsd-slot-") == 0
-                || !starts_with(ent->d_name, "extsd-slot-")
-                || !starts_with(ent->d_name, "fullextsd-slot-")) {
+            || strcmp(ent->d_name, "fullextsd-slot-") == 0
+            || (!starts_with(ent->d_name, "extsd-slot-")
+                && !starts_with(ent->d_name, "fullextsd-slot-"))) {
             continue;
         }
 
@@ -312,7 +341,7 @@ void Roms::add_installed()
 
     struct stat sb;
 
-    for (auto rom : all_roms.roms) {
+    for (const auto& rom : all_roms.roms) {
         std::string boot_path = get_raw_path(rom->boot_image_path());
         std::string system_path = rom->full_system_path();
 
@@ -344,7 +373,7 @@ std::shared_ptr<Rom> Roms::find_by_id(const std::string &id) const
         }
     }
 
-    return std::shared_ptr<Rom>();
+    return {};
 }
 
 std::shared_ptr<Rom> Roms::get_current_rom()
@@ -353,9 +382,9 @@ std::shared_ptr<Rom> Roms::get_current_rom()
     roms.add_installed();
 
     // This is set if mbtool is handling the boot process
-    std::string prop_id = util::property_get_string(PROP_MULTIBOOT_ROM_ID, {});
+    const std::string prop_id = util::property_get_string(PROP_MULTIBOOT_ROM_ID, {});
     if (!prop_id.empty()) {
-        auto rom = roms.find_by_id(prop_id);
+        const auto rom = roms.find_by_id(prop_id);
         if (rom) {
             return rom;
         }
@@ -389,14 +418,14 @@ std::shared_ptr<Rom> Roms::get_current_rom()
                     && sb.st_dev == sb2.st_dev
                     && sb.st_ino == sb2.st_ino) {
                 // Cache the result
-                util::property_set(PROP_MULTIBOOT_ROM_ID, rom->id.c_str());
+                util::property_set(PROP_MULTIBOOT_ROM_ID, rom->id);
 
                 return rom;
             }
         }
     }
 
-    return std::shared_ptr<Rom>();
+    return {};
 }
 
 std::shared_ptr<Rom> Roms::create_rom(const std::string &id)
@@ -418,64 +447,60 @@ std::shared_ptr<Rom> Roms::create_rom(const std::string &id)
         return create_rom_fullextsd_slot(id.substr(15));
     }
 
-    return std::shared_ptr<Rom>();
+    return {};
 }
 
 bool Roms::is_valid(const std::string &id)
 {
     return id == "primary"
             || id == "dual"
-            || (id != "multi-slot-" && starts_with(id.c_str(), "multi-slot-"))
-            || (id != "data-slot-" && starts_with(id.c_str(), "data-slot-"))
-            || (id != "extsd-slot-" && starts_with(id.c_str(), "extsd-slot-"));
+            || (id != "multi-slot-" && starts_with(id, "multi-slot-"))
+            || (id != "data-slot-" && starts_with(id, "data-slot-"))
+            || (id != "extsd-slot-" && starts_with(id, "extsd-slot-"))
+            || (id != "fullextsd-slot-" && starts_with(id, "fullextsd-slot-"));
 }
 
-std::string Roms::get_system_partition()
-{
-    struct stat sb;
-    if (stat("/raw/system", &sb) == 0) {
+std::string Roms::get_system_partition() {
+    struct stat sb = {};
+    if (stat("/raw/system", &sb) == 0)
         return "/raw/system";
-    } else if (stat("/raw-system", &sb) == 0) {
+    if (stat("/raw-system", &sb) == 0)
         return "/raw-system";
-    } else if (stat("/system", &sb) == 0) {
+    if (stat("/system", &sb) == 0)
         return "/system";
-    } else {
-        return std::string();
-    }
+
+    return {};
 }
 
-std::string Roms::get_cache_partition()
-{
-    struct stat sb;
-    if (stat("/raw/cache", &sb) == 0) {
+std::string Roms::get_cache_partition() {
+    struct stat sb = {};
+    if (stat("/raw/cache", &sb) == 0)
         return "/raw/cache";
-    } else if (stat("/raw-cache", &sb) == 0) {
+    if (stat("/raw-cache", &sb) == 0)
         return "/raw-cache";
-    } else if (stat("/cache", &sb) == 0) {
+    if (stat("/cache", &sb) == 0)
         return "/cache";
-    } else {
-        return std::string();
-    }
+
+    return {};
 }
 
-std::string Roms::get_data_partition()
-{
-    struct stat sb;
-    if (stat("/raw/data", &sb) == 0) {
+std::string Roms::get_data_partition() {
+    struct stat sb = {};
+    if (stat("/raw/data", &sb) == 0)
         return "/raw/data";
-    } else if (stat("/raw-data", &sb) == 0) {
+    if (stat("/raw-data", &sb) == 0)
         return "/raw-data";
-    } else if (stat("/data", &sb) == 0) {
+    if (stat("/data", &sb) == 0)
         return "/data";
-    } else {
-        return std::string();
-    }
+
+    return {};
+
 }
 
 std::string Roms::get_extsd_partition()
 {
     // Try hard-coded mount points first
-    struct stat sb;
+    struct stat sb = {};
     for (const std::string &mount_point : extsd_mount_points) {
         if (stat(mount_point.c_str(), &sb) == 0) {
             if (util::is_mounted(mount_point)) {
@@ -496,8 +521,7 @@ std::string Roms::get_extsd_partition()
             }
 
             if (stat(entry.source.c_str(), &sb) < 0) {
-                LOGW("%s: Failed to stat: %s",
-                     entry.source.c_str(), strerror(errno));
+                LOGW("%s: Failed to stat: %s", entry.source.c_str(), strerror(errno));
                 continue;
             }
 
@@ -518,6 +542,18 @@ std::string Roms::get_extsd_partition()
     return {};
 }
 
+std::string Roms::get_vendor_partition() {
+    struct stat sb = {};
+    if (stat("/raw/vendor", &sb) == 0)
+        return "/raw/vendor";
+    if (stat("/raw-vendor", &sb) == 0)
+        return "/raw-vendor";
+    if (stat("/vendor", &sb) == 0)
+        return "/vendor";
+
+    return {};
+}
+
 std::string Roms::get_mountpoint(Rom::Source source)
 {
     switch (source) {
@@ -529,8 +565,10 @@ std::string Roms::get_mountpoint(Rom::Source source)
         return get_data_partition();
     case Rom::Source::ExternalSd:
         return get_extsd_partition();
+    case Rom::Source::Vendor:
+        return get_vendor_partition();
     default:
-        return std::string();
+        return {};
     }
 }
 
@@ -541,15 +579,18 @@ std::string get_raw_path(const std::string &path)
     std::string result;
 
     // This is faster than doing util::path_split()...
-    if (path == "/system" || starts_with(path.c_str(), "/system/")) {
+    if (path == "/system" || starts_with(path, "/system/")) {
         result = Roms::get_system_partition();
         result += path.substr(7);
-    } else if (path == "/cache" || starts_with(path.c_str(), "/cache/")) {
+    } else if (path == "/cache" || starts_with(path, "/cache/")) {
         result = Roms::get_cache_partition();
         result += path.substr(6);
-    } else if (path == "/data" || starts_with(path.c_str(), "/data/")) {
+    } else if (path == "/data" || starts_with(path, "/data/")) {
         result = Roms::get_data_partition();
         result += path.substr(5);
+    } else if (path == "/vendor" || starts_with(path, "/vendor/")) {
+        result = Roms::get_vendor_partition();
+        result += path.substr(7);
     } else {
         result = path;
     }

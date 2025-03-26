@@ -20,6 +20,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "mbcommon/outcome.h"
 
@@ -28,5 +29,6 @@ namespace mb::util
 
 oc::result<void> mkdir_recursive(std::string dir, mode_t perms);
 oc::result<void> mkdir_parent(const std::string &path, mode_t perms);
+oc::result<std::vector<std::string>> listdir(const std::string& path);
 
 }

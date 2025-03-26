@@ -44,6 +44,7 @@
 #define SYSTEM "/system"
 #define CACHE "/cache"
 #define DATA "/data"
+#define VENDOR "/vendor"
 
 #define TAG "update-binary-tool: "
 
@@ -51,12 +52,10 @@
 namespace mb
 {
 
-static bool get_paths(const char *mountpoint, const char **out_source_path,
-                      bool *out_is_image)
+static bool get_paths(const char *mountpoint, const char **out_source_path, bool *out_is_image)
 {
     const char *loop_path;
     const char *bind_path;
-    bool is_image;
 
     if (strcmp(mountpoint, SYSTEM) == 0) {
         loop_path = CHROOT_SYSTEM_LOOP_DEV;
@@ -67,11 +66,14 @@ static bool get_paths(const char *mountpoint, const char **out_source_path,
     } else if (strcmp(mountpoint, DATA) == 0) {
         loop_path = CHROOT_DATA_LOOP_DEV;
         bind_path = CHROOT_DATA_BIND_MOUNT;
+    } else if (strcmp(mountpoint, VENDOR) == 0) {
+        loop_path = CHROOT_VENDOR_LOOP_DEV;
+        bind_path = CHROOT_VENDOR_BIND_MOUNT;
     } else {
         return false;
     }
 
-    is_image = access(loop_path, R_OK) == 0;
+    const bool is_image = access(loop_path, R_OK) == 0;
 
     if (out_source_path) {
         *out_source_path = is_image ? loop_path : bind_path;
@@ -105,7 +107,7 @@ static bool do_mount(const char *mountpoint)
     }
 
     // NOTE: We don't need the loop mount logic in util::mount()
-    if (mount(source_path, mountpoint, fstype, flags, "") < 0) {
+    if (mount(source_path, mountpoint, fstype, flags, nullptr) < 0) {
         LOGE(TAG "%s: Failed to mount path: %s", source_path, strerror(errno));
         return false;
     }
@@ -150,7 +152,7 @@ static bool do_format(const char *mountpoint)
 
     std::vector<std::string> exclusions;
     if (strcmp(mountpoint, DATA) == 0) {
-        exclusions.push_back("media");
+        exclusions.emplace_back("media");
     }
 
     if (!wipe_directory(mountpoint, exclusions)) {
@@ -201,17 +203,14 @@ int update_binary_tool_main(int argc, char *argv[])
 
     int long_index = 0;
 
-    while ((opt = getopt_long(argc, argv, short_options,
-                              long_options, &long_index)) != -1) {
-        switch (opt) {
-        case 'h':
+    while ((opt = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1) {
+        if(opt == 'h') {
             update_binary_tool_usage(stdout);
             return EXIT_SUCCESS;
-
-        default:
-            update_binary_tool_usage(stderr);
-            return EXIT_FAILURE;
         }
+
+        update_binary_tool_usage(stderr);
+        return EXIT_FAILURE;
     }
 
     if (argc - optind != 2) {
@@ -225,12 +224,12 @@ int update_binary_tool_main(int argc, char *argv[])
     const char *action = argv[optind];
     const char *mountpoint = argv[optind + 1];
 
-    bool is_valid_action = strcmp(action, ACTION_MOUNT) == 0
-            || strcmp(action, ACTION_UNMOUNT) == 0
-            || strcmp(action, ACTION_FORMAT) == 0;
-    bool is_valid_mountpoint = strcmp(mountpoint, SYSTEM) == 0
-            || strcmp(mountpoint, CACHE) == 0
-            || strcmp(mountpoint, DATA) == 0;
+    const bool is_valid_action = strcmp(action, ACTION_MOUNT) == 0
+        || strcmp(action, ACTION_UNMOUNT) == 0
+        || strcmp(action, ACTION_FORMAT) == 0;
+    const bool is_valid_mountpoint = strcmp(mountpoint, SYSTEM) == 0
+        || strcmp(mountpoint, CACHE) == 0
+        || strcmp(mountpoint, DATA) == 0;
 
     if (!is_valid_action || !is_valid_mountpoint) {
         update_binary_tool_usage(stderr);

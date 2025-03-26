@@ -89,3 +89,43 @@ foreach(variant ${variants})
         )
     endif()
 endforeach()
+
+if(${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    add_library(
+            mbpatcher
+            STATIC
+            src/fileinfo.cpp
+            src/patcherconfig.cpp
+            # C wrapper API
+            src/cwrapper/cfileinfo.cpp
+            src/cwrapper/cpatcherconfig.cpp
+            src/cwrapper/cpatcherinterface.cpp
+            # Edify tokenizer
+            src/edify/tokenizer.cpp
+            # Private classes
+            src/private/fileutils.cpp
+            src/private/miniziputils.cpp
+            # Autopatchers
+            src/autopatchers/magiskpatcher.cpp
+            src/autopatchers/mountcmdpatcher.cpp
+            src/autopatchers/standardpatcher.cpp
+            # Patchers
+            src/patchers/odinpatcher.cpp
+            src/patchers/ramdiskupdater.cpp
+            src/patchers/zippatcher.cpp
+    )
+
+    # Includes
+    target_include_directories(
+            mbpatcher
+            PUBLIC
+            include
+            PRIVATE
+            .
+            ${CMAKE_SOURCE_DIR}/external/minizip
+            ${CMAKE_SOURCE_DIR}/libmbcommon/include
+            ${CMAKE_SOURCE_DIR}/libmbdevice/include
+            ${CMAKE_SOURCE_DIR}/libmblog/include
+            ${CMAKE_SOURCE_DIR}/libmbpio/include
+    )
+endif()

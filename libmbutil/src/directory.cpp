@@ -22,6 +22,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <dirent.h>
 
 #include <sys/stat.h>
 
@@ -81,6 +82,35 @@ oc::result<void> mkdir_parent(const std::string &path, mode_t perms)
     }
 
     return oc::success();
+}
+
+oc::result<std::vector<std::string>> listdir(const std::string& path) {
+    if (path.empty()) {
+        return std::errc::invalid_argument;
+    }
+
+    DIR* dir;
+    dirent* entry;
+
+    if ((dir = opendir(path.c_str())) == nullptr) {
+        return ec_from_errno();
+    }
+
+    std::vector<std::string> entries;
+    entries.reserve(64);
+
+    while ((entry = readdir(dir)) != nullptr) {
+        if(!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
+            continue;
+
+        entries.emplace_back(entry->d_name);
+        if(entry->d_type == DT_DIR)
+            entries[entries.size() - 1] += "/";
+    }
+
+    closedir(dir);
+
+    return entries;
 }
 
 }

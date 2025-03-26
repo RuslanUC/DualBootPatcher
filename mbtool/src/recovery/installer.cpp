@@ -257,8 +257,7 @@ int Installer::run_command(const std::vector<std::string> &argv)
         argv,
         {},
         {},
-        _passthrough ? util::CmdLineCb{}
-            : std::bind(&Installer::output_cb, this, _1, _2)
+        _passthrough ? util::CmdLineCb{} : std::bind(&Installer::output_cb, this, _1, _2)
     );
 }
 
@@ -272,8 +271,7 @@ int Installer::run_command_chroot(const std::string &dir,
         argv,
         {},
         dir,
-        _passthrough ? util::CmdLineCb{}
-            : std::bind(&Installer::output_cb, this, _1, _2)
+        _passthrough ? util::CmdLineCb{} : std::bind(&Installer::output_cb, this, _1, _2)
     );
 }
 
@@ -293,12 +291,14 @@ bool Installer::create_chroot()
     run_command({ "mount", "/system" });
     run_command({ "mount", "/cache" });
     run_command({ "mount", "/data" });
+    run_command({ "mount", "/vendor" });
     run_command({ "mount", "-o", "ro", "/efs" });
 
     // Remount as writable (needed for in-app flashing)
-    log_mount("", Roms::get_system_partition().c_str(), "", MS_REMOUNT, "");
-    log_mount("", Roms::get_cache_partition().c_str(), "", MS_REMOUNT, "");
-    log_mount("", Roms::get_data_partition().c_str(), "", MS_REMOUNT, "");
+    log_mount("", Roms::get_system_partition().c_str(), "", MS_REMOUNT, nullptr);
+    log_mount("", Roms::get_cache_partition().c_str(), "", MS_REMOUNT, nullptr);
+    log_mount("", Roms::get_data_partition().c_str(), "", MS_REMOUNT, nullptr);
+    log_mount("", Roms::get_vendor_partition().c_str(), "", MS_REMOUNT, nullptr);
 
     // Make sure everything really is mounted
     if (!log_is_mounted("/system")
@@ -319,7 +319,7 @@ bool Installer::create_chroot()
 
     // Create chroot and mount tmpfs there
     if (log_mkdir(_chroot.c_str(), 0700) < 0
-            || log_mount("tmpfs", _chroot.c_str(), "tmpfs", 0, "") < 0) {
+            || log_mount("tmpfs", _chroot.c_str(), "tmpfs", 0, nullptr) < 0) {
         return false;
     }
 
@@ -334,24 +334,25 @@ bool Installer::create_chroot()
             || log_mkdir(in_chroot("/data").c_str(), 0755) < 0
             || log_mkdir(in_chroot("/cache").c_str(), 0755) < 0
             || log_mkdir(in_chroot("/system").c_str(), 0755) < 0
+            || log_mkdir(in_chroot("/vendor").c_str(), 0755) < 0
             || log_mkdir(in_chroot("/firmware").c_str(), 0755) < 0
             || log_mkdir(in_chroot("/efs").c_str(), 0755) < 0) {
         return false;
     }
 
     // Other mounts
-    if (log_mount("none", in_chroot("/dev").c_str(), "tmpfs", 0, "") < 0
+    if (log_mount("none", in_chroot("/dev").c_str(), "tmpfs", 0, nullptr) < 0
             || log_mkdir(in_chroot("/dev/pts").c_str(), 0755) < 0
-            || log_mount("none", in_chroot("/dev/pts").c_str(), "devpts", 0, "") < 0
+            || log_mount("none", in_chroot("/dev/pts").c_str(), "devpts", 0, nullptr) < 0
             || log_mkdir(in_chroot("/dev/socket").c_str(), 0755) < 0
-            || log_mount("none", in_chroot("/proc").c_str(), "proc", 0, "") < 0
-            || log_mount("none", in_chroot("/sys").c_str(), "sysfs", 0, "") < 0
-            || log_mount("none", in_chroot("/tmp").c_str(), "tmpfs", 0, "") < 0) {
+            || log_mount("none", in_chroot("/proc").c_str(), "proc", 0, nullptr) < 0
+            || log_mount("none", in_chroot("/sys").c_str(), "sysfs", 0, nullptr) < 0
+            || log_mount("none", in_chroot("/tmp").c_str(), "tmpfs", 0, nullptr) < 0) {
         return false;
     }
 
     // Some recoveries don't have SELinux enabled
-    if (log_mount("none", in_chroot("/sys/fs/selinux").c_str(), "selinuxfs", 0, "") < 0
+    if (log_mount("none", in_chroot("/sys/fs/selinux").c_str(), "selinuxfs", 0, nullptr) < 0
             && errno != ENOENT) {
         LOGV("Ignoring /sys/fs/selinux mount");
         LOGE("Failed to mount %s (%s) at %s: %s",
@@ -429,13 +430,12 @@ bool Installer::destroy_chroot() const
 {
     // Disassociate loop devices that the ROM installer may have assigned
     // (grr, SuperSU...)
-    std::string dev_block_path(in_chroot("/dev/block"));
+    const std::string dev_block_path(in_chroot("/dev/block"));
     ScopedDIR dp(opendir(dev_block_path.c_str()), closedir);
     if (dp) {
-        std::string path;
-        struct dirent *ent;
+        dirent *ent;
         while ((ent = readdir(dp.get()))) {
-            path = dev_block_path;
+            std::string path = dev_block_path;
             path += '/';
             path += ent->d_name;
             (void) util::loopdev_remove_device(path.c_str());
@@ -446,6 +446,7 @@ bool Installer::destroy_chroot() const
     log_umount(in_chroot("/system").c_str());
     log_umount(in_chroot("/cache").c_str());
     log_umount(in_chroot("/data").c_str());
+    log_umount(in_chroot("/vendor").c_str());
     log_umount(in_chroot("/efs").c_str());
 
     log_umount(in_chroot("/dev/pts").c_str());
@@ -476,9 +477,8 @@ bool Installer::destroy_chroot() const
 
 bool Installer::mount_efs() const
 {
-    std::string manufacturer =
-            util::property_get_string("ro.product.manufacturer", {});
-    std::string brand = util::property_get_string("ro.product.brand", {});
+    const std::string manufacturer = util::property_get_string("ro.product.manufacturer", {});
+    const std::string brand = util::property_get_string("ro.product.brand", {});
 
     if (strcasecmp(manufacturer.c_str(), "samsung") != 0
             && strcasecmp(brand.c_str(), "samsung") != 0) {
@@ -621,7 +621,7 @@ bool Installer::extract_multiboot_files()
         return false;
     }
 
-    std::vector<std::string> sigcheck{
+    std::vector sigcheck{
         _temp + "/mbtool",
         _temp + "/bb-wrapper.sh",
         _temp + "/binaries/file-contexts-tool",
@@ -670,8 +670,8 @@ bool Installer::extract_multiboot_files()
  */
 bool Installer::set_up_busybox_wrapper()
 {
-    std::string temp_busybox = _temp + "/bb-wrapper.sh";
-    std::string sbin_busybox = in_chroot("/sbin/busybox");
+    const std::string temp_busybox = _temp + "/bb-wrapper.sh";
+    const std::string sbin_busybox = in_chroot("/sbin/busybox");
 
     rename(sbin_busybox.c_str(), in_chroot("/sbin/busybox_orig").c_str());
 
@@ -703,7 +703,7 @@ bool Installer::create_image(const std::string &path, uint64_t size)
         return false;
     }
 
-    auto result = create_ext4_image(path, size);
+    const auto result = create_ext4_image(path, size);
     if (result == CreateImageResult::NotEnoughSpace) {
         auto avail = util::mount_get_avail_size(util::dir_name(path));
 
@@ -792,7 +792,7 @@ bool Installer::mount_dir_or_image(const std::string &source,
                                    uint64_t image_size)
 {
     if (is_image) {
-        struct stat sb;
+        struct stat sb = {};
         if (stat(source.c_str(), &sb) < 0) {
             double mib = static_cast<double>(image_size) / 1024 / 1024;
 
@@ -828,7 +828,7 @@ bool Installer::mount_dir_or_image(const std::string &source,
     } else {
         if (!util::mkdir_recursive(source, 0771)
                 || !util::mkdir_recursive(bind_target, 0771)
-                || mount(source.c_str(), bind_target.c_str(), "", MS_BIND, "") < 0) {
+                || mount(source.c_str(), bind_target.c_str(), "", MS_BIND, nullptr) < 0) {
             display_msg("Failed to bind mount %s to %s",
                         source.c_str(), bind_target.c_str());
             return false;
@@ -1299,7 +1299,7 @@ void Installer::command_output(std::string_view line)
 
 std::unordered_map<std::string, std::string> Installer::get_properties()
 {
-    return std::unordered_map<std::string, std::string>();
+    return {};
 }
 
 Installer::ProceedState Installer::on_initialize()
@@ -1435,6 +1435,22 @@ Installer::ProceedState Installer::install_stage_set_up_environment()
     return ProceedState::Continue;
 }
 
+bool Installer::find_block_dev(const std::vector<std::string>& devs, const std::string& name, std::string& out, const bool missing_ok) {
+    auto find_existing_path = [](const std::string &path) {
+        return access(path.c_str(), R_OK) == 0;
+    };
+
+    const auto it = std::find_if(devs.begin(), devs.end(), find_existing_path);
+    if (it == devs.end()) {
+        display_msg("Could not determine the " + name + " block device");
+        return missing_ok;
+    }
+
+    out = *it;
+    LOGD("%s block device: %s", (std::string(1, toupper(name[0])) + name.substr(1)).c_str(), out.c_str());
+    return true;
+}
+
 Installer::ProceedState Installer::install_stage_check_device()
 {
     LOGD("[Installer] Device verification stage");
@@ -1457,12 +1473,9 @@ Installer::ProceedState Installer::install_stage_check_device()
         return ProceedState::Fail;
     }
 
-    std::string prop_product_device =
-            util::property_get_string("ro.product.device", {});
-    std::string prop_build_product =
-            util::property_get_string("ro.build.product", {});
-    std::string prop_patcher_device =
-            util::property_get_string(PROP_DEVICE, {});
+    const std::string prop_product_device = util::property_get_string("ro.product.device", {});
+    const std::string prop_build_product = util::property_get_string("ro.build.product", {});
+    const std::string prop_patcher_device = util::property_get_string(PROP_DEVICE, {});
 
     LOGD("ro.product.device = %s", prop_product_device.c_str());
     LOGD("ro.build.product = %s", prop_build_product.c_str());
@@ -1486,9 +1499,7 @@ Installer::ProceedState Installer::install_stage_check_device()
 
     // Verify codename
     auto const &codenames = _device.codenames();
-    auto it = std::find(codenames.begin(), codenames.end(), _detected_device);
-
-    if (it == codenames.end()) {
+    if (std::find(codenames.begin(), codenames.end(), _detected_device) == codenames.end()) {
         display_msg("Patched zip is for:");
         for (auto const &codename : codenames) {
             display_msg("- %s", codename.c_str());
@@ -1498,47 +1509,20 @@ Installer::ProceedState Installer::install_stage_check_device()
         return ProceedState::Fail;
     }
 
-    auto find_existing_path = [](const std::string &path) {
-        return access(path.c_str(), R_OK) == 0;
-    };
-
     auto const &boot_devs = _device.boot_block_devs();
     auto const &recovery_devs = _device.recovery_block_devs();
     auto const &system_devs = _device.system_block_devs();
+    auto const &vendor_devs = _device.vendor_block_devs();
     auto const &extra_devs = _device.extra_block_devs();
 
-    // Find boot blockdev path
-    it = std::find_if(boot_devs.begin(), boot_devs.end(),
-                      find_existing_path);
-    if (it == boot_devs.end()) {
-        display_msg("Could not determine the boot block device");
-        return ProceedState::Fail;
-    } else {
-        _boot_block_dev = *it;
-        LOGD("Boot block device: %s", _boot_block_dev.c_str());
-    }
+    find_block_dev(recovery_devs, "recovery", _recovery_block_dev, true);
 
-    // Find recovery blockdev path
-    it = std::find_if(recovery_devs.begin(), recovery_devs.end(),
-                      find_existing_path);
-    if (it == recovery_devs.end()) {
-        LOGW("Could not determine the recovery block device");
-        // Non-fatal
-    } else {
-        _recovery_block_dev = *it;
-        LOGD("Recovery block device: %s", _recovery_block_dev.c_str());
-    }
-
-    // Find system blockdev path
-    it = std::find_if(system_devs.begin(), system_devs.end(),
-                      find_existing_path);
-    if (it == system_devs.end()) {
-        display_msg("Could not determine the system block device");
+    if (!find_block_dev(boot_devs, "boot", _boot_block_dev, false))
         return ProceedState::Fail;
-    } else {
-        _system_block_dev = *it;
-        LOGD("System block device: %s", _system_block_dev.c_str());
-    }
+    if (!find_block_dev(system_devs, "system", _system_block_dev, false))
+        return ProceedState::Fail;
+    if (!find_block_dev(vendor_devs, "vendor", _vendor_block_dev, false))
+        return ProceedState::Fail;
 
     // Other block devices to copy
     std::vector<std::string> devs;
@@ -1551,8 +1535,7 @@ Installer::ProceedState Installer::install_stage_check_device()
         std::string dev_path(in_chroot(dev));
 
         if (auto r = util::mkdir_parent(dev_path, 0755); !r) {
-            LOGW("Failed to create parent directory of %s: %s",
-                 dev_path.c_str(), r.error().message().c_str());
+            LOGW("Failed to create parent directory of %s: %s", dev_path.c_str(), r.error().message().c_str());
         }
 
         // Follow symlinks just in case the symlink source isn't in the list
@@ -1571,16 +1554,28 @@ Installer::ProceedState Installer::install_stage_check_device()
         std::string dev_path(in_chroot(dev));
 
         if (auto r = util::mkdir_parent(dev_path, 0755); !r) {
-            LOGW("Failed to create parent directory of %s: %s",
-                 dev_path.c_str(), r.error().message().c_str());
+            LOGW("Failed to create parent directory of %s: %s", dev_path.c_str(), r.error().message().c_str());
         }
 
         if (symlink(CHROOT_SYSTEM_LOOP_DEV, dev_path.c_str()) < 0) {
-            LOGW("Failed to symlink %s to %s: %s. Continuing anyway",
-                 CHROOT_SYSTEM_LOOP_DEV, dev_path.c_str(), strerror(errno));
+            LOGW("Failed to symlink %s to %s: %s. Continuing anyway", CHROOT_SYSTEM_LOOP_DEV, dev_path.c_str(), strerror(errno));
         } else {
-            LOGD("Symlinked %s to %s",
-                 CHROOT_SYSTEM_LOOP_DEV, dev_path.c_str());
+            LOGD("Symlinked %s to %s", CHROOT_SYSTEM_LOOP_DEV, dev_path.c_str());
+        }
+    }
+
+    // Symlink CHROOT_VENDOR_LOOP_DEV to system block devs
+    for (auto const &dev : vendor_devs) {
+        std::string dev_path(in_chroot(dev));
+
+        if (auto r = util::mkdir_parent(dev_path, 0755); !r) {
+            LOGW("Failed to create parent directory of %s: %s", dev_path.c_str(), r.error().message().c_str());
+        }
+
+        if (symlink(CHROOT_VENDOR_LOOP_DEV, dev_path.c_str()) < 0) {
+            LOGW("Failed to symlink %s to %s: %s. Continuing anyway", CHROOT_VENDOR_LOOP_DEV, dev_path.c_str(), strerror(errno));
+        } else {
+            LOGD("Symlinked %s to %s", CHROOT_VENDOR_LOOP_DEV, dev_path.c_str());
         }
     }
 
@@ -1591,7 +1586,7 @@ Installer::ProceedState Installer::install_stage_get_install_type()
 {
     LOGD("[Installer] Retrieve install type stage");
 
-    std::string install_type = get_install_type();
+    const std::string install_type = get_install_type();
 
     if (install_type == CANCELLED) {
         display_msg("Cancelled installation");
@@ -1613,6 +1608,7 @@ Installer::ProceedState Installer::install_stage_get_install_type()
     _system_path = _rom->full_system_path();
     _cache_path = _rom->full_cache_path();
     _data_path = _rom->full_data_path();
+    _vendor_path = _rom->full_vendor_path();
 
     if (_system_path.empty()) {
         display_msg("Failed to determine system path");
@@ -1623,17 +1619,19 @@ Installer::ProceedState Installer::install_stage_get_install_type()
     } else if (_data_path.empty()) {
         display_msg("Failed to determine data path");
         return ProceedState::Fail;
+    } else if (_vendor_path.empty()) {
+        display_msg("Failed to determine vendor path");
+        return ProceedState::Fail;
     }
 
     display_msg("- /system: " + _system_path);
     display_msg("- /cache: " + _cache_path);
     display_msg("- /data: " + _data_path);
-    display_msg("- System is image file: %s",
-                _rom->system_is_image ? "true" : "false");
-    display_msg("- Cache is image file: %s",
-                _rom->cache_is_image ? "true" : "false");
-    display_msg("- Data is image file: %s",
-                _rom->data_is_image ? "true" : "false");
+    display_msg("- /vendor: " + _vendor_path);
+    display_msg("- System is image file: %s",  _rom->system_is_image ? "true" : "false");
+    display_msg("- Cache is image file: %s", _rom->cache_is_image ? "true" : "false");
+    display_msg("- Data is image file: %s", _rom->data_is_image ? "true" : "false");
+    display_msg("- Vendor is image file: %s", _rom->vendor_is_image ? "true" : "false");
     LOGV("ROM ID: %s", _rom->id.c_str());
 
     return ProceedState::Continue;
@@ -1652,11 +1650,11 @@ Installer::ProceedState Installer::install_stage_set_up_chroot()
     }
 
     // Switch to target ROM if possible
-    std::string boot_image_path(_rom->boot_image_path());
+    const std::string boot_image_path(_rom->boot_image_path());
     if (access(boot_image_path.c_str(), R_OK) == 0) {
         // Use an empty base dirs list since we don't want to flash any non-boot
         // partitions
-        auto result = switch_rom(_rom->id, _boot_block_dev, {}, true);
+        const auto result = switch_rom(_rom->id, _boot_block_dev, {}, true);
         if (result != SwitchRomResult::Succeeded) {
             display_msg("Failed to switch to target ROM. Continuing anyway...");
             LOGW("Failed to switch to target ROM: %d",
@@ -1771,16 +1769,15 @@ Installer::ProceedState Installer::install_stage_mount_filesystems()
         remove(_temp_image_path.c_str());
 
         if (!create_image(_temp_image_path, system_size.value())) {
-            display_msg("Failed to create temporary image %s",
-                        _temp_image_path.c_str());
+            display_msg("Failed to create temporary image %s", _temp_image_path.c_str());
 
             // Try external SD
-            std::string mountpoint(Roms::get_extsd_partition());
+            const std::string mountpoint(Roms::get_extsd_partition());
             if (!mountpoint.empty()) {
                 display_msg("Trying to create temporary image on external SD");
                 display_msg("(This will be slow)");
 
-                _temp_image_path = std::move(mountpoint);
+                _temp_image_path = mountpoint;
                 _temp_image_path += "/.system.img.tmp";
                 remove(_temp_image_path.c_str());
 
@@ -1814,10 +1811,24 @@ Installer::ProceedState Installer::install_stage_mount_filesystems()
         return ProceedState::Fail;
     }
 
+    auto vendor_size = util::get_blockdev_size(_vendor_block_dev);
+    if (!vendor_size) {
+        display_msg("Failed to get size of vendor partition");
+        display_msg("Image size will be 4 GiB");
+        vendor_size = DEFAULT_IMAGE_SIZE;
+    }
+
+    if (!mount_dir_or_image(_vendor_path,
+                            in_chroot(CHROOT_VENDOR_BIND_MOUNT),
+                            in_chroot(CHROOT_VENDOR_LOOP_DEV),
+                            _rom->vendor_is_image, vendor_size.value())) {
+        return ProceedState::Fail;
+    }
+
     // Bind-mount zip file
     (void) util::create_empty_file(in_chroot("/mb/install.zip"));
     if (log_mount(_zip_file.c_str(), in_chroot("/mb/install.zip").c_str(),
-                  "", MS_BIND, "") < 0) {
+                  "", MS_BIND, nullptr) < 0) {
         return ProceedState::Fail;
     }
 
@@ -1859,19 +1870,19 @@ Installer::ProceedState Installer::install_stage_installation()
 
     bool updater_ret = true;
 
-    struct stat sb;
+    struct stat sb = {};
     if (lstat(in_chroot("/.skip-install").c_str(), &sb) < 0
             && errno == ENOENT) {
-        auto start = steady_clock::now();
+        const auto start = steady_clock::now();
         updater_ret = run_real_updater();
-        auto stop = steady_clock::now();
+        const auto stop = steady_clock::now();
         auto ms = duration_cast<milliseconds>(stop - start);
 
-        auto h = duration_cast<hours>(ms);
+        const auto h = duration_cast<hours>(ms);
         ms -= h;
-        auto m = duration_cast<minutes>(ms);
+        const auto m = duration_cast<minutes>(ms);
         ms -= m;
-        auto s = duration_cast<seconds>(ms);
+        const auto s = duration_cast<seconds>(ms);
         ms -= s;
 
         display_msg("Elapsed time: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64
@@ -1896,7 +1907,7 @@ Installer::ProceedState Installer::install_stage_installation()
 
     // Grab version and display ID so that can be cached in config.json later
     if (auto props = util::property_file_get_all(in_chroot(BUILD_PROP_PATH))) {
-        auto to_cache = {
+        const auto to_cache = {
             "ro.build.version.release",
             "ro.build.display.id",
         };
@@ -1936,6 +1947,7 @@ Installer::ProceedState Installer::install_stage_unmount_filesystems()
     run_command_chroot(_chroot, { HELPER_TOOL, "unmount", "/system" });
     run_command_chroot(_chroot, { HELPER_TOOL, "unmount", "/cache" });
     run_command_chroot(_chroot, { HELPER_TOOL, "unmount", "/data" });
+    run_command_chroot(_chroot, { HELPER_TOOL, "unmount", "/vendor" });
 
     // Disassociate loop devices
     for (const std::string &loop_dev : _associated_loop_devs) {
@@ -1976,6 +1988,10 @@ Installer::ProceedState Installer::install_stage_unmount_filesystems()
                 return ProceedState::Fail;
             }
         }
+    }
+
+    if (_rom->vendor_is_image && !util::umount(in_chroot("/vendor"))) {
+        display_msg("Failed to unmount %s", in_chroot("/vendor").c_str());
     }
 
 
@@ -2037,7 +2053,7 @@ Installer::ProceedState Installer::install_stage_finish()
         return ProceedState::Fail;
     }
 
-    std::string hash = util::hex_string(digest.value().data(),
+    const std::string hash = util::hex_string(digest.value().data(),
                                         digest.value().size());
 
     ChecksumProps props;
@@ -2046,7 +2062,7 @@ Installer::ProceedState Installer::install_stage_finish()
     props.save_file();
 
     // Write cached properties to config
-    std::string config_path(_rom->config_path());
+    const std::string config_path(_rom->config_path());
     RomConfig config;
     if (config.load_file(config_path)) {
         config.cached_props = _cached_prop;
@@ -2137,7 +2153,7 @@ bool Installer::start_installation()
     if (ret == ProceedState::Fail) return false;
     else if (ret == ProceedState::Cancel) return true;
 
-    ProceedState install_ret = install_stage_installation();
+    const ProceedState install_ret = install_stage_installation();
 
     ret = install_stage_unmount_filesystems();
     if (ret == ProceedState::Fail) return false;

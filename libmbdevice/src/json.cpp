@@ -251,6 +251,8 @@ static void process_block_devs(Device &device, const Value &node)
             device.set_boot_block_devs(get_string_array(item.value));
         } else if (key == "recovery") {
             device.set_recovery_block_devs(get_string_array(item.value));
+        } else if (key == "vendor") {
+            device.set_vendor_block_devs(get_string_array(item.value));
         } else if (key == "extra") {
             device.set_extra_block_devs(get_string_array(item.value));
         } else {
@@ -312,8 +314,7 @@ bool device_from_json(const std::string &json, Device &device, JsonError &error)
                     error, std::move(schema_uri),
                     reader.GetInvalidSchemaKeyword(), std::move(document_uri));
         } else {
-            json_error_set_parse_error(error, result.Offset(),
-                                       GetParseError_En(result.Code()));
+            json_error_set_parse_error(error, result.Offset(), GetParseError_En(result.Code()));
         }
         return false;
     }
@@ -450,6 +451,15 @@ bool device_to_json(const Device &device, std::string &json)
             array.PushBack(StringRef(p), alloc);
         }
         block_devs.AddMember("data", array, alloc);
+    }
+
+    auto const &vendor_devs = device.vendor_block_devs();
+    if (!vendor_devs.empty()) {
+        Value array(kArrayType);
+        for (auto const &p : vendor_devs) {
+            array.PushBack(StringRef(p), alloc);
+        }
+        block_devs.AddMember("vendor", array, alloc);
     }
 
     auto const &boot_devs = device.boot_block_devs();
@@ -598,14 +608,14 @@ bool device_to_json(const Device &device, std::string &json)
     }
 
     StringBuffer sb;
-    Writer<StringBuffer> writer(sb);
+    Writer writer(sb);
     DeviceSchemaProvider<> sp;
     const SchemaDocument *sd = sp.GetSchema("device.json");
     if (!sd) {
         assert(false);
         return false;
     }
-    GenericSchemaValidator<SchemaDocument, decltype(writer)> sv(*sd, writer);
+    GenericSchemaValidator sv(*sd, writer);
 
     if (!d.Accept(sv)) {
         return false;

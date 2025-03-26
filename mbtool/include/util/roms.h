@@ -29,6 +29,8 @@ namespace mb
 class Rom
 {
 public:
+    using ptr = std::shared_ptr<Rom>;
+
     friend class Roms;
 
     enum class Source
@@ -37,24 +39,29 @@ public:
         Cache,
         Data,
         ExternalSd,
+        Vendor, // Should be used for primary slot only
     };
 
     std::string id;
     Source system_source;
     Source cache_source;
     Source data_source;
+    Source vendor_source;
 private:
     std::string system_path;
     std::string cache_path;
     std::string data_path;
+    std::string vendor_path;
 public:
     bool system_is_image;
     bool cache_is_image;
     bool data_is_image;
+    bool vendor_is_image;
 
     std::string full_system_path();
     std::string full_cache_path();
     std::string full_data_path();
+    std::string full_vendor_path();
 
     std::string boot_image_path();
     std::string config_path();
@@ -91,6 +98,7 @@ public:
     static std::string get_cache_partition();
     static std::string get_data_partition();
     static std::string get_extsd_partition();
+    static std::string get_vendor_partition();
     static std::string get_mountpoint(Rom::Source source);
 };
 

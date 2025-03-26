@@ -52,6 +52,8 @@ enum class MountFlag : uint32_t
     MountData           = 1u << 12,
     // Mount external SD
     MountExternalSd     = 1u << 13,
+    // Mount /vendor
+    MountVendor         = 1u << 14,
 };
 MB_DECLARE_FLAGS(MountFlags, MountFlag)
 MB_DECLARE_OPERATORS_FOR_FLAGS(MountFlags)
@@ -60,5 +62,6 @@ bool mount_fstab(const char *path, const std::shared_ptr<Rom> &rom,
                  const device::Device &device, MountFlags flags,
                  const android::init::DeviceHandler &handler);
 bool mount_rom(const std::shared_ptr<Rom> &rom);
+bool try_extsd_mount(const char *block_dev, const char *mount_point);
 
 }

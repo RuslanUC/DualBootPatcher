@@ -161,6 +161,18 @@ SETTER(char const * const *, data_block_devs)
     d->set_data_block_devs(capi_cstr_array_to_vector(value));
 }
 
+GETTER(char * const *, vendor_block_devs)
+{
+    CCAST(device);
+    return capi_vector_to_cstr_array(d->vendor_block_devs());
+}
+
+SETTER(char const * const *, vendor_block_devs)
+{
+    CAST(device);
+    d->set_vendor_block_devs(capi_cstr_array_to_vector(value));
+}
+
 GETTER(char * const *, boot_block_devs)
 {
     CCAST(device);

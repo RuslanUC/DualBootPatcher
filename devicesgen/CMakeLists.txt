@@ -21,4 +21,12 @@ if(${MBP_BUILD_TARGET} STREQUAL hosttools)
         RUNTIME DESTINATION "${BIN_INSTALL_DIR}/"
         COMPONENT Applications
     )
+elseif(${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    add_executable(devicesgen devicesgen.cpp)
+    target_include_directories(
+            devicesgen
+            PRIVATE
+            ${CMAKE_SOURCE_DIR}/external/rapidjson/include
+            ${CMAKE_SOURCE_DIR}/libmbdevice/include
+    )
 endif()

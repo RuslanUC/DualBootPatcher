@@ -5,6 +5,7 @@ table MbRom {
     system_path : string;
     cache_path : string;
     data_path : string;
+    vendor_path : string;
     version : string;
     build : string;
 }

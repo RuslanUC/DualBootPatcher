@@ -84,15 +84,17 @@
 
 using namespace mb::device;
 
-namespace mb
-{
-
+namespace mb {
 using ScopedDIR = std::unique_ptr<DIR, decltype(closedir) *>;
 using ScopedFILE = std::unique_ptr<FILE, decltype(fclose) *>;
 
 static pid_t daemon_pid = -1;
 
 static PropertyService g_property_service;
+
+static std::vector<std::string> extsd_paths = {
+    "/dev/block/mmcblk1p1",
+};
 
 static void init_usage(FILE *stream)
 {
@@ -692,111 +694,277 @@ static bool symlink_base_dir(const Device &device)
     return false;
 }
 
-static std::string find_fstab()
-{
-    struct stat sb;
+static std::string find_fstab_at_path(const std::string& fstab_path, const std::vector<std::string>& init_paths, std::vector<std::string>& fallback) {
+    struct stat sb = {};
 
     // Try using androidboot.hardware as the fstab suffix since most devices
     // follow this scheme.
-    std::string fstab("/fstab.");
-    std::string hardware;
-    hardware = util::property_get_string("ro.hardware", "");
+    std::string fstab = fstab_path + "/fstab.";
+    const std::string hardware = util::property_get_string("ro.hardware", "");
     fstab += hardware;
 
     if (!hardware.empty() && stat(fstab.c_str(), &sb) == 0) {
         return fstab;
     }
 
-    // Otherwise, try to find it in the /init*.rc files
-    ScopedDIR dir(opendir("/"), closedir);
-    if (!dir) {
-        return std::string();
-    }
-
-    std::vector<std::string> fallback;
-
-    struct dirent *ent;
-    while ((ent = readdir(dir.get()))) {
-        // Look for *.rc files
-        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0
-                || !starts_with(ent->d_name, "init")
-                || !ends_with(ent->d_name, ".rc")) {
-            continue;
+    for(const auto& init_path : init_paths) {
+        // Otherwise, try to find it in the /init*.rc files
+        ScopedDIR dir(opendir(init_path.c_str()), closedir);
+        if (!dir) {
+            return {};
         }
 
-        std::string path("/");
-        path += ent->d_name;
-
-        ScopedFILE fp(fopen(path.c_str(), "re"), fclose);
-        if (!fp) {
-            continue;
-        }
-
-        char *line = nullptr;
-        size_t len = 0;
-        ssize_t read = 0;
-
-        auto free_line = finally([&]{
-            free(line);
-        });
-
-        while ((read = getline(&line, &len, fp.get())) >= 0) {
-            char *ptr = strstr(line, "mount_all");
-            if (!ptr) {
+        dirent *ent;
+        while ((ent = readdir(dir.get()))) {
+            // Look for *.rc files
+            if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0
+                    || !starts_with(ent->d_name, "init")
+                    || !ends_with(ent->d_name, ".rc")) {
                 continue;
             }
-            ptr += 9;
 
-            // Find the argument to mount_all
-            while (isspace(*ptr)) {
-                ++ptr;
+            std::string path = init_path + "/" + ent->d_name;
+
+            ScopedFILE fp(fopen(path.c_str(), "re"), fclose);
+            if (!fp) {
+                continue;
             }
 
-            // Strip everything after next whitespace
-            for (char *p = ptr; *p; ++p) {
-                if (isspace(*p)) {
-                    *p = '\0';
+            char *line = nullptr;
+            size_t len = 0;
+
+            auto free_line = finally([&]{
+                free(line);
+            });
+
+            while (getline(&line, &len, fp.get()) >= 0) {
+                char *ptr = strstr(line, "mount_all");
+                if (!ptr) {
+                    continue;
+                }
+                ptr += 9;
+
+                // Find the argument to mount_all
+                while (isspace(*ptr)) {
+                    ++ptr;
+                }
+
+                // Strip everything after next whitespace
+                for (char *p = ptr; *p; ++p) {
+                    if (isspace(*p)) {
+                        *p = '\0';
+                        break;
+                    }
+                }
+
+                if (strstr(ptr, "goldfish") || strstr(ptr, "fota")) {
+                    LOGV("Skipping fstab file: %s", ptr);
+                    continue;
+                }
+
+                fstab = ptr;
+
+                // Replace ${ro.hardware}
+                if (fstab.find("${ro.hardware}") != std::string::npos) {
+                    util::replace_all(fstab, "${ro.hardware}", hardware);
+                }
+
+                LOGD("Found fstab during search: %s", fstab.c_str());
+
+                // Check if fstab exists
+                if (stat(fstab.c_str(), &sb) < 0) {
+                    LOGE("Failed to stat fstab %s: %s", fstab.c_str(), strerror(errno));
+                    continue;
+                }
+
+                // If the fstab file is for charger mode, add to fallback
+                if (fstab.find("charger") != std::string::npos) {
+                    LOGE("Adding charger fstab to fallback fstabs: %s", fstab.c_str());
+                    fallback.push_back(fstab);
+                    continue;
+                }
+
+                return fstab;
+            }
+        }
+    }
+
+    return {};
+}
+
+static std::string find_fstab(const Rom::ptr& rom, const Device& device, const android::init::DeviceHandler& handler)
+{
+    struct stat sb = {};
+
+    std::vector<std::string> fallback;
+    std::string fstab = find_fstab_at_path("", {""}, fallback);
+
+    if(!fstab.empty())
+        return fstab;
+
+    LOGI("Failed to find fstab at /, trying to search in vendor");
+
+    std::string fallback_or_empty = fallback.empty() ? std::string() : fallback[0];
+
+    if(!util::mkdir_recursive("/raw", 0755)
+        || !util::mkdir_recursive("/vendor", 0755)
+        || !util::mkdir_recursive("/raw/data", 0755)
+        || !util::mkdir_recursive("/raw/extsd", 0755)) {
+        LOGE("Failed to create /raw or one of its subdirectories");
+        return fallback_or_empty;
+    }
+
+    std::vector<std::string> mounts;
+    mounts.reserve(4);
+
+    const auto unmount_tmp = [&mounts] {
+        for(ssize_t i = static_cast<ssize_t>(mounts.size()) - 1; i >= 0; --i) {
+            if(!util::umount(mounts[i])) {
+                LOGW("Failed to unmount %s", mounts[i].c_str());
+            }
+        }
+    };
+
+    switch (rom->vendor_source) {
+        case Rom::Source::Data: {
+            std::string data_dev;
+            for (auto const& path : device.data_block_devs()) {
+                if(stat(fstab.c_str(), &sb) == 0) {
+                    data_dev = path;
                     break;
                 }
             }
 
-            if (strstr(ptr, "goldfish") || strstr(ptr, "fota")) {
-                LOGV("Skipping fstab file: %s", ptr);
-                continue;
+            if(data_dev.empty()) {
+                LOGW("Failed to find data block device");
+                return fallback_or_empty;
             }
 
-            fstab = ptr;
-
-            // Replace ${ro.hardware}
-            if (fstab.find("${ro.hardware}") != std::string::npos) {
-                util::replace_all(fstab, "${ro.hardware}", hardware);
+            if(auto ret = util::mount(data_dev, "/raw/data", "auto", MS_RDONLY, ""); !ret) {
+                LOGW("Failed to mount data block device: %s", ret.error().message().c_str());
+                return fallback_or_empty;
             }
 
-            LOGD("Found fstab during search: %s", fstab.c_str());
+            mounts.emplace_back("/raw/data");
 
-            // Check if fstab exists
-            if (stat(fstab.c_str(), &sb) < 0) {
-                LOGE("Failed to stat fstab %s: %s",
-                     fstab.c_str(), strerror(errno));
-                continue;
+            if(auto ret = util::mount(rom->full_vendor_path(), "/vendor", "auto", MS_RDONLY, ""); !ret) {
+                LOGW("Failed to mount vendor: %s", ret.error().message().c_str());
+                break;
             }
 
-            // If the fstab file is for charger mode, add to fallback
-            if (fstab.find("charger") != std::string::npos) {
-                LOGE("Adding charger fstab to fallback fstabs: %s",
-                     fstab.c_str());
-                fallback.push_back(fstab);
-                continue;
+            mounts.emplace_back("/vendor");
+
+            break;
+        }
+        case Rom::Source::Vendor: {
+            std::string vendor_dev;
+            for (auto const& path : device.vendor_block_devs()) {
+                if(stat(fstab.c_str(), &sb) == 0) {
+                    vendor_dev = path;
+                    break;
+                }
             }
 
-            return fstab;
+            if(vendor_dev.empty()) {
+                LOGW("Failed to find vendor block device");
+                return fallback_or_empty;
+            }
+
+            if(auto ret = util::mount(vendor_dev, "/vendor", "auto", MS_RDONLY, ""); !ret) {
+                LOGW("Failed to mount vendor block device: %s", ret.error().message().c_str());
+                break;
+            }
+
+            mounts.emplace_back("/vendor");
+
+            break;
+        }
+        case Rom::Source::ExternalSd: {
+            static constexpr int max_attempts = 5;
+            bool mounted = false;
+
+            for (int i = 0; i < max_attempts; ++i) {
+                LOGV("[Attempt %d/%d] Finding and mounting external SD", i + 1, max_attempts);
+
+                auto devices_map = handler.GetBlockDeviceMap();
+
+                for (const auto& extsd_path : extsd_paths) {
+                    for (const auto& [_, info] : devices_map) {
+                        if (info.path != extsd_path)
+                            continue;
+
+                        if (mb::try_extsd_mount(info.path.c_str(), "/raw/extsd")) {
+                            mounted = true;
+                            break;
+                        }
+                    }
+                }
+
+                if(mounted)
+                    break;
+
+                if (i < max_attempts - 1) {
+                    LOGW("No external SD patterns were matched; waiting 1 second");
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                }
+            }
+
+            if(!mounted) {
+                LOGE("No external SD patterns were matched after %d attempts", max_attempts);
+                return fallback_or_empty;
+            }
+
+            mounts.emplace_back("/raw/extsd");
+
+            if(auto ret = util::mount(rom->full_vendor_path(), "/vendor", "auto", MS_RDONLY, ""); !ret) {
+                LOGW("Failed to mount vendor: %s", ret.error().message().c_str());
+                break;
+            }
+
+            mounts.emplace_back("/vendor");
+
+            break;
+        }
+        default: {
+            LOGW("Invalid vendor source (expected it to be in data, primary vendor, or extsd, got %d)!", rom->vendor_source);
+            return fallback_or_empty;
         }
     }
 
-    if (!fallback.empty()) {
-        return fallback[0];
+    if(!util::is_mounted("/vendor")) {
+        unmount_tmp();
+        return fallback_or_empty;
     }
-    return std::string();
+
+    const auto copy_fstab = [unmount_tmp](const std::string& fstab_path) {
+        auto ret = util::file_read_all(fstab_path);
+        if(ret) {
+            auto ret2 = util::file_write_data("/fstab.mb", ret.value().data(), ret.value().size());
+            if(ret2) {
+                unmount_tmp();
+                return true;
+            }
+            LOGE("Failed to write fstab: %s: %s", fstab_path.c_str(), ret2.error().message().c_str());
+            return false;
+        }
+        LOGE("Failed to read fstab: %s: %s", fstab_path.c_str(), ret.error().message().c_str());
+        return false;
+    };
+
+    fstab = find_fstab_at_path("/vendor/etc", {"/vendor/etc/init/hw", "/vendor/etc/init", "/vendor/etc"}, fallback);
+    if(!fstab.empty() && copy_fstab(fstab)) {
+        unmount_tmp();
+        return "/fstab.mb";
+    }
+
+    if (!fallback.empty() && copy_fstab(fallback[0])) {
+        unmount_tmp();
+        return "/fstab.mb";
+    }
+
+    unmount_tmp();
+
+    return {};
 }
 
 static bool create_layout_version()
@@ -816,15 +984,13 @@ static bool create_layout_version()
         fwrite(layout_version, 1, strlen(layout_version), fp.get());
         fp.reset();
     } else {
-        LOGE("%s: Failed to open for writing: %s",
-             "/data/.layout_version", strerror(errno));
+        LOGE("%s: Failed to open for writing: %s", "/data/.layout_version", strerror(errno));
         return false;
     }
 
     if (auto ret = util::selinux_set_context("/data/.layout_version",
             "u:object_r:install_data_file:s0"); !ret) {
-        LOGE("%s: Failed to set SELinux context: %s",
-             "/data/.layout_version", ret.error().message().c_str());
+        LOGE("%s: Failed to set SELinux context: %s", "/data/.layout_version", ret.error().message().c_str());
         return false;
     }
 
@@ -1096,7 +1262,7 @@ int init_main(int argc, char *argv[])
 {
     // Some devices actually receive arguments, so ignore them during boot
     if (getppid() != 0) {
-        static struct option long_options[] = {
+        static option long_options[] = {
             {"help", no_argument, 0, 'h'},
             {0, 0, 0, 0}
         };
@@ -1105,15 +1271,13 @@ int init_main(int argc, char *argv[])
         int long_index = 0;
 
         while ((opt = getopt_long(argc, argv, "h", long_options, &long_index)) != -1) {
-            switch (opt) {
-            case 'h':
+            if(opt == 'h') {
                 init_usage(stdout);
                 return EXIT_SUCCESS;
-
-            default:
-                init_usage(stderr);
-                return EXIT_FAILURE;
             }
+
+            init_usage(stderr);
+            return EXIT_FAILURE;
         }
 
         // There should be no other arguments
@@ -1137,6 +1301,7 @@ int init_main(int argc, char *argv[])
 
     // Create mount points
     mkdir("/system", 0755);
+    mkdir("/vendor", 0755);
     mkdir("/cache", 0770);
     mkdir("/data", 0771);
     (void) util::chown("/cache", "system", "cache", 0);
@@ -1151,13 +1316,11 @@ int init_main(int argc, char *argv[])
         LOGE("Failed to set loglevel: %s", strerror(errno));
     }
 
-    LOGV("Booting up with version %s (%s)",
-         version(), git_version());
+    LOGV("Booting up with version %s (%s)", version(), git_version());
 
     auto contents = util::file_read_all(DEVICE_JSON_PATH);
     if (!contents) {
-        LOGE("%s: Failed to read file: %s", DEVICE_JSON_PATH,
-             contents.error().message().c_str());
+        LOGE("%s: Failed to read file: %s", DEVICE_JSON_PATH, contents.error().message().c_str());
         emergency_reboot();
     }
 
@@ -1185,26 +1348,27 @@ int init_main(int argc, char *argv[])
     // initialize properties
     properties_setup();
 
-    std::string fstab(find_fstab());
-
-    LOGV("fstab file: %s", fstab.c_str());
-
-    if (access(fstab.c_str(), R_OK) < 0) {
-        LOGW("%s: Failed to access file: %s", fstab.c_str(), strerror(errno));
-        LOGW("Continuing anyway...");
-        fstab = "/fstab.MBTOOL_DUMMY_DO_NOT_USE";
-        (void) util::create_empty_file(fstab);
-    }
-
     // Get ROM ID from /romid
     std::string rom_id = get_rom_id();
-    std::shared_ptr<Rom> rom = Roms::create_rom(rom_id);
+    Rom::ptr rom = Roms::create_rom(rom_id);
     if (!rom) {
         LOGE("Unknown ROM ID: %s", rom_id.c_str());
         emergency_reboot();
     }
 
     LOGV("ROM ID is: %s", rom_id.c_str());
+
+    std::string fstab = find_fstab(rom, device, uevent_thread.device_handler());
+    const std::string fstab_desc = fstab.empty() ? "[no fstab]" : fstab.c_str();
+
+    LOGV("fstab file: %s", fstab_desc.c_str());
+
+    if (access(fstab.c_str(), R_OK) < 0) {
+        LOGW("%s: Failed to access file: %s", fstab_desc.c_str(), strerror(errno));
+        LOGW("Continuing anyway...");
+        fstab = "/fstab.MBTOOL_DUMMY_DO_NOT_USE";
+        (void) util::create_empty_file(fstab);
+    }
 
     // Mount system, cache, and external SD from fstab file
     MountFlags flags =
@@ -1213,8 +1377,7 @@ int init_main(int argc, char *argv[])
             | MountFlag::MountCache
             | MountFlag::MountData
             | MountFlag::MountExternalSd;
-    if (!mount_fstab(fstab.c_str(), rom, device, flags,
-                     uevent_thread.device_handler())) {
+    if (!mount_fstab(fstab.c_str(), rom, device, flags, uevent_thread.device_handler())) {
         LOGE("Failed to mount fstab");
         emergency_reboot();
     }

@@ -97,6 +97,11 @@
                     "type": "array",
                     "$ref": "#/definitions/dev_path_list"
                 },
+                "vendor": {
+                    "title": "Vendor partition block device paths",
+                    "type": "array",
+                    "$ref": "#/definitions/dev_path_list"
+                },
                 "boot": {
                     "title": "Boot partition block device paths",
                     "type": "array",

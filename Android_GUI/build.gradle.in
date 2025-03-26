@@ -163,7 +163,4 @@ dependencies {
     implementation project(":rootshell")
 
     debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.14'
-    debugImplementation 'com.squareup.leakcanary:leakcanary-android-process:2.14'
-    releaseImplementation 'com.squareup.leakcanary:leakcanary-android-no-op:2.14'
-    ciImplementation 'com.squareup.leakcanary:leakcanary-android-no-op:2.14'
 }

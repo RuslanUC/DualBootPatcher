@@ -258,6 +258,7 @@ elseif (${MBP_BUILD_TARGET} STREQUAL clion-workaround)
                 ${CMAKE_SOURCE_DIR}/libmbsign/include
                 ${CMAKE_SOURCE_DIR}/libmbbootimg/include
                 ${CMAKE_SOURCE_DIR}/libmbdevice/include
+                ${CMAKE_SOURCE_DIR}/external/outcome/include
         )
 
         # Disable some pugixml features

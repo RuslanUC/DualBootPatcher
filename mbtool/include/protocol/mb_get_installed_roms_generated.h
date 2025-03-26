@@ -22,8 +22,9 @@ struct MbRom FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_SYSTEM_PATH = 6,
     VT_CACHE_PATH = 8,
     VT_DATA_PATH = 10,
-    VT_VERSION = 12,
-    VT_BUILD = 14
+    VT_VENDOR_PATH = 12,
+    VT_VERSION = 14,
+    VT_BUILD = 16
   };
   const flatbuffers::String *id() const {
     return GetPointer<const flatbuffers::String *>(VT_ID);
@@ -36,6 +37,9 @@ struct MbRom FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   }
   const flatbuffers::String *data_path() const {
     return GetPointer<const flatbuffers::String *>(VT_DATA_PATH);
+  }
+  const flatbuffers::String *vendor_path() const {
+    return GetPointer<const flatbuffers::String *>(VT_VENDOR_PATH);
   }
   const flatbuffers::String *version() const {
     return GetPointer<const flatbuffers::String *>(VT_VERSION);
@@ -53,6 +57,8 @@ struct MbRom FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            verifier.Verify(cache_path()) &&
            VerifyOffset(verifier, VT_DATA_PATH) &&
            verifier.Verify(data_path()) &&
+           VerifyOffset(verifier, VT_VENDOR_PATH) &&
+           verifier.Verify(vendor_path()) &&
            VerifyOffset(verifier, VT_VERSION) &&
            verifier.Verify(version()) &&
            VerifyOffset(verifier, VT_BUILD) &&
@@ -75,6 +81,9 @@ struct MbRomBuilder {
   }
   void add_data_path(flatbuffers::Offset<flatbuffers::String> data_path) {
     fbb_.AddOffset(MbRom::VT_DATA_PATH, data_path);
+  }
+  void add_vendor_path(flatbuffers::Offset<flatbuffers::String> vendor_path) {
+    fbb_.AddOffset(MbRom::VT_VENDOR_PATH, vendor_path);
   }
   void add_version(flatbuffers::Offset<flatbuffers::String> version) {
     fbb_.AddOffset(MbRom::VT_VERSION, version);
@@ -100,11 +109,13 @@ inline flatbuffers::Offset<MbRom> CreateMbRom(
     flatbuffers::Offset<flatbuffers::String> system_path = 0,
     flatbuffers::Offset<flatbuffers::String> cache_path = 0,
     flatbuffers::Offset<flatbuffers::String> data_path = 0,
+    flatbuffers::Offset<flatbuffers::String> vendor_path = 0,
     flatbuffers::Offset<flatbuffers::String> version = 0,
     flatbuffers::Offset<flatbuffers::String> build = 0) {
   MbRomBuilder builder_(_fbb);
   builder_.add_build(build);
   builder_.add_version(version);
+  builder_.add_vendor_path(vendor_path);
   builder_.add_data_path(data_path);
   builder_.add_cache_path(cache_path);
   builder_.add_system_path(system_path);
@@ -118,6 +129,7 @@ inline flatbuffers::Offset<MbRom> CreateMbRomDirect(
     const char *system_path = nullptr,
     const char *cache_path = nullptr,
     const char *data_path = nullptr,
+    const char *vendor_path = nullptr,
     const char *version = nullptr,
     const char *build = nullptr) {
   return mbtool::daemon::v3::CreateMbRom(
@@ -126,6 +138,7 @@ inline flatbuffers::Offset<MbRom> CreateMbRomDirect(
       system_path ? _fbb.CreateString(system_path) : 0,
       cache_path ? _fbb.CreateString(cache_path) : 0,
       data_path ? _fbb.CreateString(data_path) : 0,
+      vendor_path ? _fbb.CreateString(vendor_path) : 0,
       version ? _fbb.CreateString(version) : 0,
       build ? _fbb.CreateString(build) : 0);
 }

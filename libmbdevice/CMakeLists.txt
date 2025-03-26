@@ -162,3 +162,38 @@ if(${MBP_BUILD_TARGET} STREQUAL hosttools)
         COMPONENT Applications
     )
 endif()
+
+if(${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    add_library(
+            mbdevice
+            STATIC
+            src/device.cpp
+            src/json.cpp
+            src/schema.cpp
+            src/capi/device.cpp
+            src/capi/json.cpp
+            ${generated_dir}/schemas_gen.cpp
+    )
+    target_include_directories(
+            mbdevice
+            PUBLIC
+            include
+            PRIVATE
+            ${CMAKE_CURRENT_BINARY_DIR}/generated
+            ${CMAKE_SOURCE_DIR}/libmbcommon/include
+            ${CMAKE_SOURCE_DIR}/external/rapidjson/include
+            ${CMAKE_SOURCE_DIR}/external/outcome/include
+    )
+
+    add_executable(
+            mbdevice_tests
+            # Helpers
+            tests/main.cpp
+            # Tests
+            tests/test_device.cpp
+            tests/test_flags.cpp
+            tests/test_json.cpp
+    )
+
+    add_executable(schemas2cpp schemas2cpp.cpp)
+endif()

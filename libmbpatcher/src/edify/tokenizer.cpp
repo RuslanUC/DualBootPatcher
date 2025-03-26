@@ -21,6 +21,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <system_error>
 
 #include "mbcommon/common.h"
 #include "mbcommon/string.h"

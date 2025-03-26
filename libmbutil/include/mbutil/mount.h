@@ -21,6 +21,7 @@
 
 #include <optional>
 #include <string>
+#include <system_error>
 
 #include "mbcommon/outcome.h"
 

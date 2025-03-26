@@ -206,6 +206,26 @@ void Device::set_data_block_devs(std::vector<std::string> block_devs)
 }
 
 /*!
+ * \brief Get the vendor block device paths
+ *
+ * \return List of vendor block device paths
+ */
+std::vector<std::string> Device::vendor_block_devs() const
+{
+    return m_base.vendor_devs;
+}
+
+/*!
+ * \brief Set the vendor block device paths
+ *
+ * \param block_devs List of vendor block device paths
+ */
+void Device::set_vendor_block_devs(std::vector<std::string> block_devs)
+{
+    m_base.vendor_devs = std::move(block_devs);
+}
+
+/*!
  * \brief Get the boot block device paths
  *
  * \return List of boot block device paths
