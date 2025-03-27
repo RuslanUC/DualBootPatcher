@@ -40,6 +40,7 @@
 
 
 static std::vector<std::string> extsd_mount_points{
+    "/mb/extsd.a8",
     "/raw/extsd",
     "/external_sd",
     "/external_sdcard",

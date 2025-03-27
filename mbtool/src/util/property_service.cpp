@@ -191,10 +191,13 @@ PropertyService::~PropertyService()
 bool PropertyService::initialize()
 {
     if (m_initialized) {
+        LOGW("PropertyService already initialized");
         return false;
     }
 
-    if (mb::__system_property_area_init() != 0) {
+    const int ret = mb::__system_property_area_init();
+    if (ret != 0) {
+        LOGE("__system_property_area_init failed with error %d", ret);
         return false;
     }
 
@@ -269,11 +272,10 @@ uint32_t PropertyService::set_internal(const std::string &name,
 
         mb::__system_property_update(pi, value.data(), value.size());
     } else {
-        int rc = mb::__system_property_add(name.data(), name.size(),
-                                           value.data(), value.size());
+        const int rc = mb::__system_property_add(name.data(), name.size(),
+                                                 value.data(), value.size());
         if (rc < 0) {
-            LOGE("['%s'='%s'] Failed to add property",
-                 name.c_str(), std::string(value).c_str());
+            LOGE("['%s'='%s'] Failed to add property", name.c_str(), std::string(value).c_str());
             return PROP_ERROR_SET_FAILED;
         }
     }
@@ -553,4 +555,8 @@ void PropertyService::load_system_props()
     load_properties_file("/odm/build.prop", {});
     load_properties_file("/vendor/build.prop", {});
     load_properties_file("/factory/factory.prop", "ro.*");
+}
+
+bool PropertyService::is_initialized() {
+    return m_initialized;
 }

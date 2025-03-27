@@ -35,5 +35,6 @@ namespace mb
 {
 
 [[noreturn]] void emergency_reboot();
+void dump_logs_to_storage();
 
 }

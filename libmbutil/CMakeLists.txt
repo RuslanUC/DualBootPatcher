@@ -169,6 +169,7 @@ if(${MBP_BUILD_TARGET} STREQUAL clion-workaround)
             PUBLIC include
             PRIVATE .
             ${CMAKE_SOURCE_DIR}/libmbcommon/include
+            ${CMAKE_SOURCE_DIR}/libmblog/include
             ${CMAKE_SOURCE_DIR}/external/outcome/include
     )
 endif()

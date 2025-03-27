@@ -48,6 +48,8 @@ public:
 
     bool load_properties_file(const std::string &path, std::string_view filter);
 
+    bool is_initialized();
+
 private:
     bool m_initialized;
     int m_setter_fd;

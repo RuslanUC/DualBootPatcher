@@ -1015,7 +1015,7 @@ bool mount_fstab(const char *path, const std::shared_ptr<Rom> &rom,
     return ret;
 }
 
-void list_dir_to_log(const std::string& path) {
+static void list_dir_to_log(const std::string& path) {
     const auto entries = mb::util::listdir(path);
     if(!entries) {
         LOGE("Failed to get contents of directory \"%s\": %s", path.c_str(), entries.error().message().c_str());
