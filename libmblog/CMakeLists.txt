@@ -79,3 +79,25 @@ foreach(variant ${variants})
         )
     endif()
 endforeach()
+
+if(${MBP_BUILD_TARGET} STREQUAL clion-workaround)
+    add_library(
+            mblog
+            SHARED
+            src/base_logger.cpp
+            src/logging.cpp
+            src/stdio_logger.cpp
+    )
+
+    target_sources(
+            mblog
+            PRIVATE
+            src/android_logger.cpp
+            src/kmsg_logger.cpp
+    )
+
+    target_include_directories(
+            mblog
+            PUBLIC include
+    )
+endif()

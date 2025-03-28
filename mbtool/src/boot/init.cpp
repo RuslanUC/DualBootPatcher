@@ -542,10 +542,10 @@ static bool add_mbtool_services(bool enable_appsync)
 
 static bool write_fstab_hack(const char *fstab)
 {
+    // TODO: remount vendor as rw if fstab is in vendor
     ScopedFILE fp_fstab(fopen(fstab, "abe"), fclose);
     if (!fp_fstab) {
-        LOGE("%s: Failed to open for writing: %s",
-             fstab, strerror(errno));
+        LOGE("%s: Failed to open for writing: %s", fstab, strerror(errno));
         return false;
     }
 
@@ -568,7 +568,7 @@ static bool strip_manual_mounts()
         return true;
     }
 
-    struct dirent *ent;
+    dirent *ent;
     while ((ent = readdir(dir.get()))) {
         // Look for *.rc files
         if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0
@@ -581,14 +581,12 @@ static bool strip_manual_mounts()
 
         ScopedFILE fp(fopen(path.c_str(), "re"), fclose);
         if (!fp) {
-            LOGE("Failed to open %s for reading: %s",
-                 path.c_str(), strerror(errno));
+            LOGE("Failed to open %s for reading: %s", path.c_str(), strerror(errno));
             continue;
         }
 
         char *line = nullptr;
         size_t len = 0;
-        ssize_t read = 0;
 
         auto free_line = finally([&]{
             free(line);
@@ -598,7 +596,7 @@ static bool strip_manual_mounts()
         std::unordered_set<std::size_t> comment_out;
 
         // Find out which lines need to be commented out
-        while ((read = getline(&line, &len, fp.get())) >= 0) {
+        while (getline(&line, &len, fp.get()) >= 0) {
             if (strstr(line, "mount")
                     && (strstr(line, "/system")
                     || strstr(line, "/cache")
@@ -630,13 +628,12 @@ static bool strip_manual_mounts()
 
         ScopedFILE fp_new(fopen(new_path.c_str(), "we"), fclose);
         if (!fp_new) {
-            LOGE("Failed to open %s for writing: %s",
-                 new_path.c_str(), strerror(errno));
+            LOGE("Failed to open %s for writing: %s", new_path.c_str(), strerror(errno));
             continue;
         }
 
         // Actually comment out the lines
-        while ((read = getline(&line, &len, fp.get())) >= 0) {
+        while (getline(&line, &len, fp.get()) >= 0) {
             if (comment_out.find(count) != comment_out.end()) {
                 fputs("#", fp_new.get());
             }
@@ -1403,57 +1400,28 @@ int init_main(int argc, char *argv[])
     struct stat sb = {};
     if(stat("/proc/device-tree/firmware/android/fstab", &sb) == 0) {
         LOGI("Fstab is found in device tree, probably dealing with rom with android >= 8");
-        if(rom->system_source != Rom::Source::ExternalSd || rom->vendor_source != Rom::Source::ExternalSd) {
-            LOGE("For roms with android >= 8, rom must be on extsd!");
-            emergency_reboot();
-        }
 
-        const auto mkdir_ret = util::mkdir_recursive("/mb/extsd.a8", 0644);
+        const auto mkdir_ret = util::mkdir_recursive("/mb/fake-dt-fstab", 0644);
         if(!mkdir_ret) {
-            LOGE("Failed to create /mb/extsd.a8: %s", mkdir_ret.error().message().c_str());
+            LOGE("Failed to create /mb/fake-dt-fstab: %s", mkdir_ret.error().message().c_str());
             emergency_reboot();
         }
 
-        if(!mb::try_extsd_mount("/dev/block/mmcblk1p1", "/mb/extsd.a8")) {
-            LOGE("Failed to mount /dev/block/mmcblk1p1 at /mb/extsd.a8");
-            emergency_reboot();
-        }
-
-        auto write_ret = util::file_write_string("/mb/system_dev", rom->full_system_path());
+        auto write_ret = util::file_write_string("/mb/fake-dt-fstab/name", "fstab");
         if(!write_ret) {
-            LOGE("Failed write /mb/system_dev: %s", write_ret.error().message().c_str());
+            LOGE("Failed to write /mb/fake-dt-fstab/name: %s", write_ret.error().message().c_str());
             emergency_reboot();
         }
-        write_ret = util::file_write_string("/mb/vendor_dev", rom->full_system_path());
+        write_ret = util::file_write_string("/mb/fake-dt-fstab/compatible", "android,fstab");
         if(!write_ret) {
-            LOGE("Failed write /mb/vendor_dev: %s", write_ret.error().message().c_str());
+            LOGE("Failed to write /mb/fake-dt-fstab/compatible: %s", write_ret.error().message().c_str());
             emergency_reboot();
         }
 
-        auto mount_ret = util::mount("/mb/system_dev", "/proc/device-tree/firmware/android/fstab/system/dev", "", MS_BIND | MS_RDONLY, "");
+        const auto mount_ret = util::mount("/mb/fake-dt-fstab", "/proc/device-tree/firmware/android/fstab", "", MS_BIND | MS_RDONLY, "");
         if(!mount_ret) {
-            LOGE("Failed to bind mount fake system dev path: %s", mount_ret.error().message().c_str());
+            LOGE("Failed to bind mount fake fstab: %s", mount_ret.error().message().c_str());
             emergency_reboot();
-        }
-        mount_ret = util::mount("/mb/vendor_dev", "/proc/device-tree/firmware/android/fstab/vendor/dev", "", MS_BIND | MS_RDONLY, "");
-        if(!mount_ret) {
-            LOGE("Failed to bind mount fake vendor dev path: %s", mount_ret.error().message().c_str());
-            emergency_reboot();
-        }
-
-        // For debug purposes
-        const std::vector<std::string> partitions = {"system", "vendor"};
-        const std::vector<std::string> files = {"dev", "type", "status", "mnt_flags", "fsmgr_flags"};
-        for(const auto& part : partitions) {
-            list_dir_to_log("/proc/device-tree/firmware/android/fstab/" + part);
-            for(const auto& file : files) {
-                const std::string file_path = "/proc/device-tree/firmware/android/fstab/" + part + "/" + file;
-                const auto f_contents = util::file_read_all(file_path);
-                if(f_contents)
-                    LOGI("  Contents of %s: %s", file_path.c_str(), f_contents.value().c_str());
-                else
-                    LOGW("  Failed to read %s: %s", file_path.c_str(), f_contents.error().message().c_str());
-            }
         }
     }
 
@@ -1551,28 +1519,6 @@ int init_main(int argc, char *argv[])
         }
     }
 
-    if(util::is_mounted("/vendor"))
-        (void)util::umount("/vendor");
-
-    /*if(util::mkdir_recursive("/raw/init-extsd", 0777)) {
-        if(mb::try_extsd_mount("/dev/block/mmcblk1p1", "/raw/init-extsd")) {
-            const int initlog_fd = open("/raw/init-extsd/init.log", O_CREAT | O_WRONLY | O_TRUNC | O_DIRECT, 0777);
-            if(initlog_fd) {
-                dup2(initlog_fd, 1);
-                dup2(initlog_fd, 2);
-                if (initlog_fd > 2)
-                    close(initlog_fd);
-                LOGI("Redirected init output to [extsd]/init.log");
-            } else {
-                LOGE("Failed to optn /raw/init-extsd/init.log");
-            }
-        } else {
-            LOGE("Failed to mount /dev/block/mmcblk1p1 at /raw/init-extsd");
-        }
-    } else {
-        LOGE("Failed to create /raw/init-extsd");
-    }*/
-
     // Kill uevent thread and close uevent socket
     uevent_thread.stop();
 
@@ -1602,7 +1548,38 @@ int init_main(int argc, char *argv[])
     //rmdir("/proc");
     //rmdir("/sys");
 
-    LOGI("Saving kmsg to internal storage before launching real init...");
+#ifdef REAL_INIT_IN_SUBPROCESS
+    LOGD("Launching real init in subprocess ...");
+    const int init_pid = fork();
+    if(init_pid == 0) {
+        static constexpr int open_mode = O_WRONLY | O_NOCTTY | O_CLOEXEC;
+        static constexpr char kmsg[] = "/dev/kmsg";
+        static constexpr char kmsg2[] = "/dev/kmsg.mblog";
+        int kmsg_fd = open(kmsg, open_mode);
+        if (kmsg_fd < 0) {
+            // If /dev/kmsg hasn't been created yet, then create our own
+            // Character device mode: S_IFCHR | 0600
+            if (mknod(kmsg2, S_IFCHR | 0600, makedev(1, 11)) == 0) {
+                kmsg_fd = open(kmsg2, open_mode);
+                if (kmsg_fd >= 0) {
+                    unlink(kmsg2);
+                }
+            }
+        }
+
+        LOGE("Kmsg fd: %d", kmsg_fd);
+        dup2(kmsg_fd, 1);
+        dup2(kmsg_fd, 2);
+        LOGE("Launching init... ");
+        execlp("/init", "/init", nullptr);
+        LOGE("Failed to exec real init: %s", strerror(errno));
+        return 1;
+    } else {
+        const int status = wait_for_pid("/init", init_pid);
+        LOGI("/init finished with status %d", status);
+        emergency_reboot();
+    }
+#else
     dump_logs_to_storage();
 
     // Start real init
@@ -1610,6 +1587,7 @@ int init_main(int argc, char *argv[])
     execlp("/init", "/init", nullptr);
     LOGE("Failed to exec real init: %s", strerror(errno));
     emergency_reboot();
+#endif
 }
 
 }
