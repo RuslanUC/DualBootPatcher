@@ -959,7 +959,7 @@ bool mount_fstab(const char *path, const std::shared_ptr<Rom> &rom,
         }
     }
 
-    // Mount data
+    // Mount vendor
     if (ret && !recs.vendor.empty()) {
         if (create_dir_and_mount(recs.vendor, VENDOR_MOUNT_POINT, 0755)) {
             successful.emplace_back(VENDOR_MOUNT_POINT);
@@ -999,8 +999,26 @@ bool mount_fstab(const char *path, const std::shared_ptr<Rom> &rom,
 
     // Rewrite fstab file
     if (ret && (flags & MountFlag::RewriteFstab)) {
-        const int fd = open(path, O_RDWR | O_TRUNC | O_CLOEXEC);
-        if (fd < 0) {
+        int fd = open(path, O_RDWR | O_TRUNC | O_CLOEXEC);
+        if(fd < 0 && errno == EROFS) {
+            LOGE("%s: Failed to open file: %s, trying to bind mount it...", path, strerror(EROFS));
+
+            if(auto mkdir_ret = util::mkdir_recursive("/raw", 0755); !mkdir_ret) {
+                LOGE("%s: Failed to create /raw: %s", path, mkdir_ret.error().message().c_str());
+                return false;
+            }
+
+            fd = open("/raw/fstab.bind", O_CREAT | O_RDWR | O_TRUNC | O_CLOEXEC, 0755);
+            if(fd < 0) {
+                LOGE("%s: Failed to open file: %s", "/raw/fstab.bind", strerror(errno));
+                return false;
+            }
+
+            if(auto mount_ret = util::mount("/raw/fstab.bind", path, "", MS_BIND | MS_RDONLY, ""); !mount_ret) {
+                LOGE("Failed to bind mount fake fstab at %s: %s", path, mount_ret.error().message().c_str());
+                return false;
+            }
+        } else if (fd < 0) {
             LOGE("%s: Failed to open file: %s", path, strerror(errno));
             return false;
         }
@@ -1042,17 +1060,6 @@ bool mount_rom(const std::shared_ptr<Rom> &rom)
 
     if(need_extsd && Roms::get_extsd_partition().empty()) {
         LOGW("This rom contains partitions that depend on extsd, but extsd is missing or not mounted");
-        /*LOGW("Trying to mount " EXTSD_BLOCK_DEV " at " EXTSD_MANUAL_MOUNT_POINT " ...");
-        struct stat sb = {};
-        if (stat(EXTSD_BLOCK_DEV, &sb) == 0) {
-            if(mount_target(EXTSD_BLOCK_DEV, EXTSD_MANUAL_MOUNT_POINT, false, false)) {
-                LOGW(EXTSD_BLOCK_DEV " mounted successfully, but mounting whole ROM still may fail (?)");
-            } else {
-                LOGE("Failed to mount " EXTSD_BLOCK_DEV ", mounting whole ROM probably will fail");
-            }
-        } else {
-            LOGE(EXTSD_BLOCK_DEV " does not exist, mounting whole ROM probably will fail");
-        }*/
     }
 
     const std::string target_system = rom->full_system_path();

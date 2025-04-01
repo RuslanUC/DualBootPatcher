@@ -758,6 +758,8 @@ static std::string find_fstab_at_path(const std::string& fstab_path, const std::
                 }
 
                 fstab = ptr;
+                if(starts_with(init_path, "/raw/fstab-vendor"))
+                    fstab = "/raw/fstab-" + fstab.substr(1);
 
                 // Replace ${ro.hardware}
                 if (fstab.find("${ro.hardware}") != std::string::npos) {
@@ -789,7 +791,7 @@ static std::string find_fstab_at_path(const std::string& fstab_path, const std::
 
 static bool mount_vendor(const Rom::ptr& rom, const Device& device, const android::init::DeviceHandler& handler, std::vector<std::string>& mounts) {
     if(!util::mkdir_recursive("/raw", 0755)
-        || !util::mkdir_recursive("/vendor", 0755)
+        || !util::mkdir_recursive("/raw/fstab-vendor", 0755)
         || !util::mkdir_recursive("/raw/data", 0755)
         || !util::mkdir_recursive("/raw/extsd", 0755)) {
         LOGE("Failed to create /raw or one of its subdirectories");
@@ -813,19 +815,19 @@ static bool mount_vendor(const Rom::ptr& rom, const Device& device, const androi
                 return false;
             }
 
-            if(auto ret = util::mount(data_dev, "/raw/data", "auto", 0, ""); !ret) {
+            if(auto ret = util::mount(data_dev, "/raw/data", "auto", MS_RDONLY, ""); !ret) {
                 LOGW("Failed to mount data block device: %s", ret.error().message().c_str());
                 return false;
             }
 
             mounts.emplace_back("/raw/data");
 
-            if(auto ret = util::mount(rom->full_vendor_path(), "/vendor", "auto", 0, ""); !ret) {
+            if(auto ret = util::mount(rom->full_vendor_path(), "/raw/fstab-vendor", "auto", MS_RDONLY, ""); !ret) {
                 LOGW("Failed to mount vendor: %s", ret.error().message().c_str());
                 break;
             }
 
-            mounts.emplace_back("/vendor");
+            mounts.emplace_back("/raw/fstab-vendor");
 
             break;
         }
@@ -843,12 +845,12 @@ static bool mount_vendor(const Rom::ptr& rom, const Device& device, const androi
                 return false;
             }
 
-            if(auto ret = util::mount(vendor_dev, "/vendor", "auto", 0, ""); !ret) {
+            if(auto ret = util::mount(vendor_dev, "/raw/fstab-vendor", "auto", MS_RDONLY, ""); !ret) {
                 LOGW("Failed to mount vendor block device: %s", ret.error().message().c_str());
                 break;
             }
 
-            mounts.emplace_back("/vendor");
+            mounts.emplace_back("/raw/fstab-vendor");
 
             break;
         }
@@ -889,12 +891,12 @@ static bool mount_vendor(const Rom::ptr& rom, const Device& device, const androi
 
             mounts.emplace_back("/raw/extsd");
 
-            if(auto ret = util::mount(rom->full_vendor_path(), "/vendor", "auto", 0, ""); !ret) {
+            if(auto ret = util::mount(rom->full_vendor_path(), "/raw/fstab-vendor", "auto", MS_RDONLY, ""); !ret) {
                 LOGW("Failed to mount vendor: %s", ret.error().message().c_str());
                 break;
             }
 
-            mounts.emplace_back("/vendor");
+            mounts.emplace_back("/raw/fstab-vendor");
 
             break;
         }
@@ -904,28 +906,7 @@ static bool mount_vendor(const Rom::ptr& rom, const Device& device, const androi
         }
     }
 
-    return !!util::is_mounted("/vendor");
-}
-
-static bool mount_vendor_if_not_mounted(const Rom::ptr& rom, const Device& device, const android::init::DeviceHandler& handler) {
-    if(util::is_mounted("/vendor")) {
-        LOGI("Vendor is already mounted");
-        return true;
-    }
-
-    std::vector<std::string> mounts;
-    mounts.reserve(4);
-    const bool vendor_mounted = mount_vendor(rom, device, handler, mounts);
-    LOGI("Vendor mounted: %hhd", vendor_mounted);
-    for(const auto& mounted_path : mounts) {
-        if(mounted_path != "/vendor") {
-            LOGI("Unmounting %s with detach", mounted_path.c_str());
-            if(umount2(mounted_path.c_str(), MNT_DETACH) < 0)
-                LOGE("Failed to unmount %s: %s", mounted_path.c_str(), strerror(errno));
-        }
-    }
-
-    return vendor_mounted;
+    return !!util::is_mounted("/raw/fstab-vendor");
 }
 
 static std::string find_fstab(const Rom::ptr& rom, const Device& device, const android::init::DeviceHandler& handler)
@@ -943,12 +924,12 @@ static std::string find_fstab(const Rom::ptr& rom, const Device& device, const a
     std::vector<std::string> mounts;
     mounts.reserve(4);
 
-    const auto unmount_tmp = [&mounts](bool incl_vendor) {
+    const auto unmount_tmp = [&mounts](const bool incl_vendor) {
         for(ssize_t i = static_cast<ssize_t>(mounts.size()) - 1; i >= 0; --i) {
-            if(mounts[i] == "/vendor" && !incl_vendor)
+            if(mounts[i] == "/raw/fstab-vendor" && !incl_vendor)
                 continue;
-            if(!util::umount(mounts[i])) {
-                LOGW("Failed to unmount %s", mounts[i].c_str());
+            if(umount2(mounts[i].c_str(), MNT_DETACH) != 0) {
+                LOGW("Failed to unmount %s: %s", mounts[i].c_str(), strerror(errno));
             }
         }
     };
@@ -958,32 +939,15 @@ static std::string find_fstab(const Rom::ptr& rom, const Device& device, const a
         return fallback_or_empty;
     }
 
-    const auto copy_fstab = [unmount_tmp](const std::string& fstab_path) {
-        auto ret = util::file_read_all(fstab_path);
-        if(ret) {
-            auto ret2 = util::file_write_data("/fstab.mb", ret.value().data(), ret.value().size());
-            if(ret2) {
-                unmount_tmp(true);
-                return true;
-            }
-            LOGE("Failed to write fstab: %s: %s", fstab_path.c_str(), ret2.error().message().c_str());
-            return false;
-        }
-        LOGE("Failed to read fstab: %s: %s", fstab_path.c_str(), ret.error().message().c_str());
-        return false;
-    };
-
-    fstab = find_fstab_at_path("/vendor/etc", {"/vendor/etc/init/hw", "/vendor/etc/init", "/vendor/etc"}, fallback);
-    if(!fstab.empty() && copy_fstab(fstab)) {
+    fstab = find_fstab_at_path("/raw/fstab-vendor/etc", {"/raw/fstab-vendor/etc/init/hw", "/raw/fstab-vendor/etc/init", "/raw/fstab-vendor/etc"}, fallback);
+    if(!fstab.empty()) {
         unmount_tmp(false);
         return fstab;
-        //return "/fstab.mb";
     }
 
-    if (!fallback.empty() && copy_fstab(fallback[0])) {
-        unmount_tmp(false);
+    if (!fallback.empty()) {
+        unmount_tmp(!starts_with(fallback[0], "/raw/fstab-vendor"));
         return fallback[0];
-        //return "/fstab.mb";
     }
 
     unmount_tmp(true);
@@ -1377,7 +1341,8 @@ int init_main(int argc, char *argv[])
     if (!device_from_json(contents.value(), device, error)) {
         LOGE("%s: Failed to load device definition", DEVICE_JSON_PATH);
         emergency_reboot();
-    } else if (device.validate()) {
+    }
+    if (device.validate()) {
         LOGE("%s: Device definition validation failed", DEVICE_JSON_PATH);
         emergency_reboot();
     }
@@ -1401,24 +1366,24 @@ int init_main(int argc, char *argv[])
     if(stat("/proc/device-tree/firmware/android/fstab", &sb) == 0) {
         LOGI("Fstab is found in device tree, probably dealing with rom with android >= 8");
 
-        const auto mkdir_ret = util::mkdir_recursive("/mb/fake-dt-fstab", 0644);
+        const auto mkdir_ret = util::mkdir_recursive("/mb-treble/fake-dt-fstab", 0644);
         if(!mkdir_ret) {
-            LOGE("Failed to create /mb/fake-dt-fstab: %s", mkdir_ret.error().message().c_str());
+            LOGE("Failed to create /mb-treble/fake-dt-fstab: %s", mkdir_ret.error().message().c_str());
             emergency_reboot();
         }
 
-        auto write_ret = util::file_write_string("/mb/fake-dt-fstab/name", "fstab");
+        auto write_ret = util::file_write_string("/mb-treble/fake-dt-fstab/name", "fstab");
         if(!write_ret) {
-            LOGE("Failed to write /mb/fake-dt-fstab/name: %s", write_ret.error().message().c_str());
+            LOGE("Failed to write /mb-treble/fake-dt-fstab/name: %s", write_ret.error().message().c_str());
             emergency_reboot();
         }
-        write_ret = util::file_write_string("/mb/fake-dt-fstab/compatible", "android,fstab");
+        write_ret = util::file_write_string("/mb-treble/fake-dt-fstab/compatible", "android,fstab");
         if(!write_ret) {
-            LOGE("Failed to write /mb/fake-dt-fstab/compatible: %s", write_ret.error().message().c_str());
+            LOGE("Failed to write /mb-treble/fake-dt-fstab/compatible: %s", write_ret.error().message().c_str());
             emergency_reboot();
         }
 
-        const auto mount_ret = util::mount("/mb/fake-dt-fstab", "/proc/device-tree/firmware/android/fstab", "", MS_BIND | MS_RDONLY, "");
+        const auto mount_ret = util::mount("/mb-treble/fake-dt-fstab", "/proc/device-tree/firmware/android/fstab", "", MS_BIND | MS_RDONLY, "");
         if(!mount_ret) {
             LOGE("Failed to bind mount fake fstab: %s", mount_ret.error().message().c_str());
             emergency_reboot();
@@ -1427,12 +1392,6 @@ int init_main(int argc, char *argv[])
 
     // initialize properties
     properties_setup();
-    if(!g_property_service.is_initialized()) {
-        LOGE("Failed to setup properties, retrying with /vendor mounted");
-        mount_vendor_if_not_mounted(rom, device, uevent_thread.device_handler());
-        properties_setup();
-        LOGI("Properties initialized with /vendor mounted: %hhd", g_property_service.is_initialized());
-    }
 
     std::string fstab = find_fstab(rom, device, uevent_thread.device_handler());
     const std::string fstab_desc = fstab.empty() ? "[no fstab]" : fstab.c_str();
@@ -1477,11 +1436,25 @@ int init_main(int argc, char *argv[])
         emergency_reboot();
     }
 
+    if(
+        util::is_mounted("/vendor")
+        && starts_with(fstab, "/raw/fstab-vendor")
+        && stat("/raw/fstab.bind", &sb) == 0
+        && util::is_mounted(fstab)
+        ) {
+        LOGD("Trying to mount /raw/fstab.bind at real vendor...");
+        const auto real_fstab_path = "/" + fstab.substr(11);
+        if(stat(real_fstab_path.c_str(), &sb) == 0) {
+            if(auto mount_ret = util::mount("/raw/fstab.bind", real_fstab_path, "", MS_BIND | MS_RDONLY, ""); !mount_ret) {
+                LOGE("Failed to bind mount fake fstab at %s: %s", real_fstab_path.c_str(), mount_ret.error().message().c_str());
+            }
+        }
+    }
+
     std::string config_path(rom->config_path());
     RomConfig config;
     if (!config.load_file(config_path)) {
-        LOGW("%s: Failed to load config for ROM %s",
-             config_path.c_str(), rom->id.c_str());
+        LOGW("%s: Failed to load config for ROM %s", config_path.c_str(), rom->id.c_str());
     }
 
     LOGD("Enable appsync: %d", config.indiv_app_sharing);

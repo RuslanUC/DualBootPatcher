@@ -207,8 +207,8 @@ static bool run_daemon()
         close(fd);
     });
 
-    char abs_name[] = "\0mbtool.daemon";
-    size_t abs_name_len = sizeof(abs_name) - 1;
+    constexpr char abs_name[] = "\0mbtool.daemon";
+    constexpr size_t abs_name_len = sizeof(abs_name) - 1;
 
     sockaddr_un addr = {};
     addr.sun_family = AF_LOCAL;
@@ -218,6 +218,8 @@ static bool run_daemon()
     // abstract socket name
     socklen_t addr_len = static_cast<socklen_t>(offsetof(sockaddr_un, sun_path))
             + static_cast<socklen_t>(abs_name_len);
+
+    LOGD("addr_len: %d", addr_len);
 
     if (bind(fd, reinterpret_cast<sockaddr *>(&addr), addr_len) < 0) {
         LOGE("Failed to bind socket: %s", strerror(errno));

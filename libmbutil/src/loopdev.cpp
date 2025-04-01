@@ -79,8 +79,7 @@ static oc::result<int> find_loopdev_by_loop_control()
     char loopdev[64];
     sprintf(loopdev, LOOP_FMT, n);
 
-    if (mknod(loopdev, S_IFBLK | 0644, static_cast<dev_t>(makedev(7, n))) < 0
-            && errno != EEXIST) {
+    if (mknod(loopdev, S_IFBLK | 0644, makedev(7, n)) < 0 && errno != EEXIST) {
         return ec_from_errno();
     }
 
@@ -109,8 +108,7 @@ static oc::result<int> find_loopdev_by_scanning()
 
         sprintf(loopdev, LOOP_FMT, n);
 
-        if (mknod(loopdev, S_IFBLK | 0644,
-                  static_cast<dev_t>(makedev(7, n))) < 0) {
+        if (mknod(loopdev, S_IFBLK | 0644, makedev(7, n)) < 0) {
             if (errno != EEXIST) {
                 continue;
             }
@@ -172,19 +170,17 @@ oc::result<void> loopdev_set_up_device(const std::string &loopdev,
                                        const std::string &file,
                                        uint64_t offset, bool ro)
 {
-    int ffd = open(file.c_str(), (ro ? O_RDONLY : O_RDWR) | O_CLOEXEC);
-    if (ffd < 0) {
+    const int ffd = open(file.c_str(), (ro ? O_RDONLY : O_RDWR) | O_CLOEXEC);
+    if (ffd < 0)
         return ec_from_errno();
-    }
 
     auto close_ffd = finally([&] {
         close(ffd);
     });
 
-    int lfd = open(loopdev.c_str(), (ro ? O_RDONLY : O_RDWR) | O_CLOEXEC);
-    if (lfd < 0) {
+    const int lfd = open(loopdev.c_str(), (ro ? O_RDONLY : O_RDWR) | O_CLOEXEC);
+    if (lfd < 0)
         return ec_from_errno();
-    }
 
     auto close_lfd = finally([&] {
         close(lfd);
@@ -192,16 +188,17 @@ oc::result<void> loopdev_set_up_device(const std::string &loopdev,
 
     loop_info64 loopinfo = {};
 
-    strlcpy(reinterpret_cast<char *>(loopinfo.lo_file_name), file.c_str(),
-            LO_NAME_SIZE);
+    strlcpy(reinterpret_cast<char *>(loopinfo.lo_file_name), file.c_str(), LO_NAME_SIZE);
     loopinfo.lo_offset = offset;
+    if(ro)
+        loopinfo.lo_flags |= LO_FLAGS_READ_ONLY;
 
     if (ioctl(lfd, LOOP_SET_FD, ffd) < 0) {
         return ec_from_errno();
     }
 
     if (ioctl(lfd, LOOP_SET_STATUS64, &loopinfo) < 0) {
-        int saved_errno = errno;
+        const int saved_errno = errno;
         ioctl(lfd, LOOP_CLR_FD, 0);
         return ec_from_errno(saved_errno);
     }
@@ -211,18 +208,16 @@ oc::result<void> loopdev_set_up_device(const std::string &loopdev,
 
 oc::result<void> loopdev_remove_device(const std::string &loopdev)
 {
-    int lfd = open(loopdev.c_str(), O_RDONLY | O_CLOEXEC);
-    if (lfd < 0) {
+    const int lfd = open(loopdev.c_str(), O_RDONLY | O_CLOEXEC);
+    if (lfd < 0)
         return ec_from_errno();
-    }
 
     auto close_fd = finally([&] {
         close(lfd);
     });
 
-    if (ioctl(lfd, LOOP_CLR_FD, 0) < 0) {
+    if (ioctl(lfd, LOOP_CLR_FD, 0) < 0)
         return ec_from_errno();
-    }
 
     return oc::success();
 }

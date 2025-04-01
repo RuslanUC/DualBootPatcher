@@ -239,7 +239,7 @@ constructor(context: Context) : Closeable {
 
         @Throws(RootDeniedException::class, RootExecutionException::class)
         private fun runMbtoolDaemon(path: String): Int {
-            return CommandUtils.runRootCommand(path, "daemon", "--replace", "--daemonize")
+            return CommandUtils.runRootCommand(path, "daemon", "--replace", "--daemonize", "--log-to-kmsg")
         }
 
         @Throws(RootDeniedException::class, RootExecutionException::class)
@@ -347,7 +347,7 @@ constructor(context: Context) : Closeable {
                         // kills processes with cmdlines matching the former case.
                         val completion = iface.signedExec(
                                 mbtool.absolutePath, mbtoolSig.absolutePath,
-                                "mbtool", arrayOf("daemon", "--replace", "--daemonize"), null)
+                                "mbtool", arrayOf("daemon", "--replace", "--daemonize", "--log-to-kmsg"), null)
 
                         return when (completion.result) {
                             SignedExecResult.PROCESS_EXITED -> {

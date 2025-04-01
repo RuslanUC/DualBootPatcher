@@ -159,7 +159,7 @@ void dump_logs_to_storage() {
             "data", "DATA", "userdata", "USERDATA", "UDA"
         });
 
-        em.mount_point = "/raw/data";
+        em.mount_point = "/raw/data-emergency";
         em.log_path = "media/0/MultiBoot/logs/kmsg.log";
 
         LOGV("Searching for data partition block device paths");
@@ -187,7 +187,7 @@ void dump_logs_to_storage() {
             "cache", "CACHE", "CAC"
         });
 
-        em.mount_point = "/raw/cache";
+        em.mount_point = "/raw/cache-emergency";
         em.log_path = "multiboot/logs/kmsg.log";
 
         LOGV("Searching for cache partition block device paths");

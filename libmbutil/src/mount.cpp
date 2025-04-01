@@ -390,7 +390,7 @@ oc::result<void> mount(const std::string &source, const std::string &target,
                        const std::string &data)
 {
     bool need_loopdev = false;
-    struct stat sb;
+    struct stat sb = {};
     std::string fstype_real{fstype};
 
     if (!(mount_flags & (MS_REMOUNT | MS_BIND | MS_MOVE))) {
@@ -398,8 +398,7 @@ oc::result<void> mount(const std::string &source, const std::string &target,
             if (S_ISREG(sb.st_mode)) {
                 need_loopdev = true;
             }
-            if (fstype == "auto"
-                    && (S_ISREG(sb.st_mode) || S_ISBLK(sb.st_mode))) {
+            if (fstype == "auto" && (S_ISREG(sb.st_mode) || S_ISBLK(sb.st_mode))) {
                 OUTCOME_TRY(detected, blkid_get_fs_type(source));
                 if (detected.empty()) {
                     return std::errc::invalid_argument;
@@ -420,7 +419,7 @@ oc::result<void> mount(const std::string &source, const std::string &target,
 
         if (::mount(loopdev.c_str(), target.c_str(), fstype_real.c_str(),
                     mount_flags, data.c_str()) < 0) {
-            int saved_errno = errno;
+            const int saved_errno = errno;
             (void) loopdev_remove_device(loopdev);
             return ec_from_errno(saved_errno);
         }
